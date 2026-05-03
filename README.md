@@ -12,9 +12,9 @@
   <h3>🎨 Real-time multiplayer drawing and guessing game inspired by Skribbl.io</h3>
   <p>Draw, guess, and have fun with friends in real-time!</p>
   
-  <h2>🚀 <a href="https://doodle-dash-kappa.vercel.app/" target="_blank">🎮 Play Now!</a></h2>
+  <h2>🚀 <a href="sketch-battle-rho.vercel.app/ " target="_blank">🎮 Play Now!</a></h2>
   
-  <a href="https://doodle-dash-kappa.vercel.app/" target="_blank">
+  <a href="sketch-battle-rho.vercel.app/" target="_blank">
     <img src="https://img.shields.io/badge/🎨%20Live%20Demo-Play%20SketchBattle-brightgreen?style=for-the-badge&logoColor=white" alt="Live Demo" />
   </a>
 </div>
