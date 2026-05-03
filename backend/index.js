@@ -21,26 +21,37 @@ requiredEnvVars.forEach(varName => {
 });
 
 const app = express();
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
+
 const server = http.createServer(app);
 connectDB();
 
 // Configure Socket.IO with CORS
 const io = new Server(server, {
   cors: {
-    origin: `${process.env.FRONTEND_URL}`,
+    origin: process.env.FRONTEND_URL,
     methods: ["GET", "POST"],
+    credentials: true
   },
 });
-
-// Enable CORS
-app.use(cors());
 
 // Socket.IO Authentication Middleware
 io.use(socketAuthMiddleware);
 
 // Setup Socket Handlers
 setupSocketHandlers(io);
+
+// ✅ Health check route
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 
 // Routes
 app.use("/api/rooms", roomRoutes);
@@ -55,7 +66,7 @@ server.listen(PORT, () => {
 
   const pingBackend = async () => {
     try {
-      const response = await fetch(PING_URL);
+      const response = await fetch(`${PING_URL}/health`);
       console.log(`Self-ping to ${PING_URL} status: ${response.status}`);
     } catch (error) {
       console.error(`Self-ping failed for ${PING_URL}:`, error.message || error);
@@ -69,7 +80,6 @@ server.listen(PORT, () => {
     timezone: "UTC",
   });
 
-  // Initial ping after startup so Render receives the first request quickly.
   setTimeout(() => {
     pingBackend();
   }, 30 * 1000);
