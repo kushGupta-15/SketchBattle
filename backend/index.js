@@ -2,19 +2,23 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
+import cron from "node-cron";
 import { connectDB } from "./db/dbconnection.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import dotenv from "dotenv";
 import logoutRoutes from "./routes/logoutRoutes.js";
 import { socketAuthMiddleware } from "./middleware/socketAuth.js";
 import setupSocketHandlers from "./handlers/socketHandlers.js";
-import path from "path";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Validate required environment variables
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET', 'FRONTEND_URL'];
+requiredEnvVars.forEach(varName => {
+  if (!process.env[varName]) {
+    console.warn(`Warning: ${varName} is not set in .env`);
+  }
+});
 
 const app = express();
 app.use(express.json());
@@ -42,14 +46,31 @@ setupSocketHandlers(io);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/logout", logoutRoutes);
 
-// Serve static files from frontend/dist
-const distPath = path.join(__dirname, "../frontend/dist");
-app.use(express.static(distPath));
-
-// SPA fallback: serve index.html for all non-API routes
-app.get("*", (req, res) => {
-  res.sendFile(path.join(distPath, "index.html"));
-});
-
 // Start the server
-server.listen(3000, () => console.log("Server running on port 3000"));
+const PORT = process.env.PORT || 3000;
+const PING_URL = process.env.SELF_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+
+  const pingBackend = async () => {
+    try {
+      const response = await fetch(PING_URL);
+      console.log(`Self-ping to ${PING_URL} status: ${response.status}`);
+    } catch (error) {
+      console.error(`Self-ping failed for ${PING_URL}:`, error.message || error);
+    }
+  };
+
+  cron.schedule("0 */10 * * * *", async () => {
+    await pingBackend();
+  }, {
+    scheduled: true,
+    timezone: "UTC",
+  });
+
+  // Initial ping after startup so Render receives the first request quickly.
+  setTimeout(() => {
+    pingBackend();
+  }, 30 * 1000);
+});
