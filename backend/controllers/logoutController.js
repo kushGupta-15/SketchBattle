@@ -3,8 +3,10 @@ import Room from "../models/roomModel.js";
 
 export const logout = async (req, res) => {
   try {
+    // To be Improved - To check wether req.headers.authorization exists or not if not then return 401 error.
     const token = req.headers.authorization.split(" ")[1];
     const decrypted_token = jwt.verify(token, process.env.JWT_SECRET);
+    
     //delete the participant from the room
     const updatedRoom = await Room.findOneAndUpdate(
       { roomId: decrypted_token.roomId },

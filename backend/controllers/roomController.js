@@ -49,6 +49,7 @@ export const createRoom = async (req, res) => {
   }
 };
 
+// To be fixed - Passwords are not hashed
 export const joinRoom = async (req, res) => {
   try {
     const { roomId, username, password } = req.body;

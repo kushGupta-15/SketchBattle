@@ -198,15 +198,9 @@ const Page = () => {
     if (!canvas || !socket) return;
 
     const resizeCanvas = () => {
-      const container = canvas.parentElement;
-      if (!container) return;
-
-      const containerWidth = container.clientWidth;
-      const containerHeight = container.clientHeight;
-
-      // Set canvas size
-      canvas.width = containerWidth;
-      canvas.height = containerHeight;
+      // Keep fixed internal resolution
+      canvas.width = 800;
+      canvas.height = 600;
 
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
@@ -718,14 +712,17 @@ const Page = () => {
         />
       </div>
 
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] gap-4 p-4">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] gap-2 md:gap-4 p-2 md:p-4 overflow-hidden">
         {/* Main Game Area */}
-        <div className="flex-1 flex flex-col space-y-4">
+        <div className="flex-1 flex flex-col space-y-2 md:space-y-4 min-h-0">
           {/* Game Header */}
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <Card 
+            className="bg-white/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl"
+            styles={{ body: { padding: "12px 16px" } }}
+          >
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4">
               <div className="flex items-center space-x-4">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-800">
+                <h2 className="text-base sm:text-xl font-bold text-gray-800">
                   {gameState.state === "waiting" && "🎮 Waiting for Players"}
                   {gameState.state === "playing" &&
                     gameState.round > 0 &&
@@ -738,7 +735,7 @@ const Page = () => {
                 {gameState.state === "playing" && timeLeft > 0 && (
                   <div className="flex items-center space-x-2 text-red-500">
                     <LuClock className="w-5 h-5" />
-                    <span className="text-lg font-mono font-bold">
+                    <span className="text-base sm:text-lg font-mono font-bold">
                       {formatTime(timeLeft)}
                     </span>
                   </div>
@@ -748,17 +745,17 @@ const Page = () => {
               {gameState.state === "playing" && !showPreparation && (
                 <div className="text-center">
                   {isCurrentDrawer ? (
-                    <div className="flex items-center space-x-2 bg-purple-100 px-4 py-2 rounded-xl">
+                    <div className="flex items-center space-x-2 bg-purple-100 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm">
                       <LuPalette className="text-purple-600" />
                       <span className="text-purple-700 font-semibold">
                         Your Turn: {currentWord || "Drawing..."}
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center space-x-2 bg-blue-100 px-4 py-2 rounded-xl">
+                    <div className="flex items-center space-x-2 bg-blue-100 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm">
                       <span className="text-blue-700">
                         Word:{" "}
-                        <span className="font-mono text-lg font-bold tracking-wider">
+                        <span className="font-mono text-base sm:text-lg font-bold tracking-wider">
                           {wordHint || "_ _ _"}
                         </span>
                       </span>
@@ -773,25 +770,28 @@ const Page = () => {
                 percent={(timeLeft / 80000) * 100}
                 showInfo={false}
                 strokeColor={timeLeft < 20000 ? "#ef4444" : "#3b82f6"}
-                className="mt-4"
-                strokeWidth={6}
+                className="mt-2 sm:mt-4"
+                strokeWidth={4}
               />
             )}
           </Card>
 
           {/* Preparation Banner */}
           {showPreparation && (
-            <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 shadow-lg rounded-2xl">
+            <Card 
+              className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 shadow-lg rounded-2xl"
+              styles={{ body: { padding: "12px 16px" } }}
+            >
               <div className="text-center">
-                <h3 className="text-lg font-bold text-green-800 mb-2">
+                <h3 className="text-base sm:text-lg font-bold text-green-800 mb-1">
                   {isCurrentDrawer ? "🎨 It's Your Turn!" : "🎯 Get Ready!"}
                 </h3>
-                <p className="text-green-600 mb-2">
+                <p className="text-xs sm:text-sm text-green-600 mb-1">
                   {isCurrentDrawer
                     ? "Select a word from the options to start drawing"
                     : `${gameState.currentDrawer} is selecting a word...`}
                 </p>
-                <div className="text-2xl font-bold text-green-800">
+                <div className="text-xl sm:text-2xl font-bold text-green-800">
                   {preparationCountdown > 0
                     ? `${preparationCountdown} seconds`
                     : "Starting..."}
@@ -801,32 +801,30 @@ const Page = () => {
           )}
 
           {/* Canvas and Tools */}
-          <div className="flex-1 flex flex-col lg:flex-row gap-4">
+          <div className="flex-1 flex flex-col lg:flex-row gap-2 md:gap-4 min-h-0">
             {/* Canvas */}
-            <div className="flex-1 bg-white rounded-2xl shadow-lg p-4">
-              <div className="w-full h-full min-h-full relative">
-                <canvas
-                  ref={canvasRef}
-                  onMouseDown={startDrawing}
-                  onMouseUp={stopDrawing}
-                  onMouseMove={draw}
-                  onMouseLeave={stopDrawing}
-                  onTouchStart={startDrawing}
-                  onTouchEnd={stopDrawing}
-                  onTouchMove={draw}
-                  className={`w-full h-full border-2 border-gray-200 rounded-xl shadow-inner absolute inset-0
-                    ${
-                      isCurrentDrawer
-                        ? isErasing
-                          ? "cursor-crosshair"
-                          : "cursor-crosshair"
-                        : "cursor-not-allowed"
-                    }
-                    ${!isCurrentDrawer ? "pointer-events-none" : ""}
-                  `}
-                  style={{ touchAction: "none" }}
-                />
-              </div>
+            <div className="flex-1 bg-white rounded-2xl shadow-lg p-2 md:p-4 flex items-center justify-center relative min-h-0 overflow-hidden">
+              <canvas
+                ref={canvasRef}
+                onMouseDown={startDrawing}
+                onMouseUp={stopDrawing}
+                onMouseMove={draw}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchEnd={stopDrawing}
+                onTouchMove={draw}
+                className={`max-w-full max-h-full aspect-[4/3] border-2 border-gray-200 rounded-xl shadow-inner bg-white
+                  ${
+                    isCurrentDrawer
+                      ? isErasing
+                        ? "cursor-crosshair"
+                        : "cursor-crosshair"
+                      : "cursor-not-allowed"
+                  }
+                  ${!isCurrentDrawer ? "pointer-events-none" : ""}
+                `}
+                style={{ touchAction: "none" }}
+              />
             </div>
 
             {/* Drawing Tools - Desktop */}
@@ -849,58 +847,57 @@ const Page = () => {
 
             {/* Drawing Tools - Mobile */}
             {isCurrentDrawer && (
-              <div className="lg:hidden bg-white rounded-2xl shadow-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-gray-800 flex items-center">
-                    <LuPalette className="mr-2" />
-                    Tools
-                  </h3>
-                  <div className="flex gap-2">
+              <div className="lg:hidden bg-white rounded-2xl shadow-lg p-3 flex flex-col gap-2 shrink-0">
+                <div className="flex items-center justify-between gap-4">
+                  {/* Colors - Mobile */}
+                  <div className="flex gap-2 overflow-x-auto py-1">
+                    {colors.map((color) => (
+                      <button
+                        key={color.value}
+                        onClick={() => handleColorChange(color.value)}
+                        className={`w-7 h-7 rounded-full ${
+                          color.bg
+                        } shadow-sm border-2 shrink-0 ${
+                          currentColor === color.value && !isErasing
+                            ? "border-purple-600 scale-110"
+                            : "border-gray-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Actions (Eraser, Clear) */}
+                  <div className="flex gap-2 shrink-0">
                     <Button
                       type={isErasing ? "primary" : "default"}
-                      size="small"
+                      size="middle"
                       icon={<LuEraser />}
                       onClick={toggleEraser}
+                      className="flex items-center justify-center"
                     />
                     <Button
                       type="default"
                       danger
-                      size="small"
+                      size="middle"
                       icon={<LuTrash2 />}
                       onClick={clearCanvas}
+                      className="flex items-center justify-center"
                     />
                   </div>
                 </div>
 
-                {/* Colors - Mobile */}
-                <div className="grid grid-cols-8 gap-2 mb-4">
-                  {colors.map((color) => (
-                    <button
-                      key={color.value}
-                      onClick={() => handleColorChange(color.value)}
-                      className={`w-8 h-8 rounded-lg ${
-                        color.bg
-                      } shadow-md border-2 ${
-                        currentColor === color.value && !isErasing
-                          ? "border-gray-800 scale-110"
-                          : "border-gray-300"
-                      }`}
-                    />
-                  ))}
-                </div>
-
                 {/* Brush Size - Mobile */}
-                <div className="flex items-center space-x-4">
-                  <LuPencil className="text-gray-600" />
+                <div className="flex items-center gap-3">
+                  <LuPencil className="text-gray-500 text-xs shrink-0" />
                   <Slider
                     min={2}
                     max={20}
                     step={2}
                     value={currentStroke}
                     onChange={handleStrokeChange}
-                    className="flex-1"
+                    className="flex-1 !my-0"
                   />
-                  <span className="text-xs text-gray-500 w-8">
+                  <span className="text-xs text-gray-500 w-8 shrink-0">
                     {currentStroke}px
                   </span>
                 </div>
@@ -914,7 +911,7 @@ const Page = () => {
           className={`w-full lg:w-80 space-y-4 ${
             isMobileSidebarOpen ? "block" : "hidden lg:block"
           } ${
-            isMobileSidebarOpen ? "fixed inset-0 z-40 bg-white p-4 pt-20" : ""
+            isMobileSidebarOpen ? "fixed inset-0 z-40 bg-white p-4 pt-20 overflow-y-auto pb-24" : ""
           }`}
         >
           {/* Player List */}

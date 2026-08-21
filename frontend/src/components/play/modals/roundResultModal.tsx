@@ -61,7 +61,8 @@ const RoundResultModal = ({
       closable={false}
       maskClosable={false}
       centered
-      width={500}
+      width="95%"
+      style={{ maxWidth: "500px" }}
     >
       <div className="space-y-6">
         {/* Turn Summary */}
