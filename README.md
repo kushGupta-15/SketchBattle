@@ -1,4 +1,4 @@
-# SketchBattle ✨🎨
+# SketchBattle
 
 <div align="center">
   <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
@@ -9,66 +9,52 @@
 </div>
 
 <div align="center">
-  <h3>🎨 Real-time multiplayer drawing and guessing game inspired by Skribbl.io</h3>
+  <h3>Real-time multiplayer drawing and guessing game inspired by Skribbl.io</h3>
   <p>Draw, guess, and have fun with friends in real-time!</p>
-  
-  <h2>🚀 <a href="https://sketch-battle-rho.vercel.app/" target="_blank">🎮 Play Now!</a></h2>
-  
+
+  <h2><a href="https://sketch-battle-rho.vercel.app/" target="_blank">Play Now</a></h2>
+
   <a href="https://sketch-battle-rho.vercel.app/" target="_blank">
-    <img src="https://img.shields.io/badge/🎨%20Live%20Demo-Play%20SketchBattle-brightgreen?style=for-the-badge&logoColor=white" alt="Live Demo" />
+    <img src="https://img.shields.io/badge/Live%20Demo-Play%20SketchBattle-brightgreen?style=for-the-badge&logoColor=white" alt="Live Demo" />
   </a>
 </div>
 
 ---
 
-<!-- ## 🌟 Features
+## Features
 
-- 🎨 **Interactive Drawing Canvas** - Smooth drawing with mouse/touch support
-- 🔄 **Smart Reconnection** - 10-second grace period to rejoin without losing progress
-- ⏱️ **Timed Rounds** - Fast-paced gameplay with countdown timers
-- 🏆 **Scoring System** - Points for quick guesses and successful drawings
-- 👥 **Multiple Rooms** - Private lobbies with password protection
-- 🔐 **JWT Authentication** - Secure token-based user sessions
-- 📱 **Responsive Design** - Works on desktop and mobile devices
-- ⚡ **Real-time Communication** - Instant updates via WebSockets
-- 🖌️ **Customizable Drawing Tools** - Choose colors, brush sizes, and more
-- 🗣️ **Voice Input** - Use speech-to-text to chat
-- 💡 Smart Hints – Automatically get helpful hints if you're stuck for too long -->
+- **Interactive Drawing Canvas** - Smooth drawing with mouse/touch support
+- **Video Chat** - See and talk to your friends while playing
+- **Voice Input & Feedback** - Use your voice to chat and get game updates
+- **Smart Reconnection** - Reconnect within 10 seconds if you're the current drawer, or the game waits up to 30 seconds before ending if the room empties out — your score and progress are preserved either way
+- **Timed Rounds & Turns** - Fast-paced gameplay with countdown timers (80-second drawing turns, 15-second word selection)
+- **Rank-Based Scoring System** - The faster you guess relative to other players, the more points you earn (1st, 2nd, 3rd, and late-guess tiers)
+- **Private Rooms** - Create password-protected lobbies for your friends
+- **JWT Authentication** - Secure token-based user sessions (REST + Socket.IO)
+- **Responsive Design** - Play on desktop, tablet, or mobile
+- **Real-time Communication** - Instant updates via WebSockets
+- **Customizable Drawing Tools** - Choose colors, brush sizes, and clear the canvas
+- **Smart Hints** - Progressive letter reveals as the turn timer counts down
 
-## 🌟 Features
-
-- 🎨 **Interactive Drawing Canvas** - Smooth drawing with mouse/touch support
-- 📹 **Video Chat** - See and talk to your friends while playing
-- 🗣️ **Voice Input & Feedback** - Use your voice to chat and get game updates
-- 🔄 **Smart Reconnection** - 30-second grace period to rejoin without losing progress
-- ⏱️ **Timed Rounds & Turns** - Fast-paced gameplay with countdown timers
-- 🏆 **Dynamic Scoring System** - Points for quick guesses and successful drawings
-- 👥 **Private Rooms** - Create password-protected lobbies for your friends
-- 🔐 **JWT Authentication** - Secure token-based user sessions
-- 📱 **Responsive Design** - Play on desktop, tablet, or mobile
-- ⚡ **Real-time Communication** - Instant updates via WebSockets
-- 🖌️ **Customizable Drawing Tools** - Choose colors, brush sizes, and clear the canvas
-- 💡 **Smart Hints** – Automatically get helpful hints if you're stuck for too long
-
-## 🎮 How to Play
+## How to Play
 
 1. **Create or Join** a game room with a password
 2. **Wait for Players** - At least 2 players needed to start
 3. **Take Turns Drawing** - Choose from 3 word options when it's your turn
 4. **Guess Words** - Type your guesses in the chat
-5. **Earn Points** - Faster guesses = more points!
+5. **Earn Points** - Guess before others to earn more — first, second, and third correct guessers earn the most, with a smaller reward for later correct guesses
 6. **Win the Game** - Highest score after all rounds wins
 
-### 🎯 Scoring
+### Scoring
 
 - **First to guess**: 120 points
 - **Second to guess**: 110 points
 - **Third to guess**: 100 points
 - **Late guess**: 80 points
-- **Drawer bonus**: 50 points (when someone guesses)
-- **Drawer penalty**: -60 points (if nobody guesses)
+- **Drawer bonus**: 50 points (when at least one player guesses correctly)
+- **Drawer penalty**: 60 points deducted (if nobody guesses; score is floored at 0)
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 
@@ -81,12 +67,14 @@
 ### Backend
 
 - **Node.js** with Express
-- **Socket.IO** for WebSocket communication
-- **MongoDB** with Mongoose for data persistence
-- **JWT** for authentication
-- **bcrypt** for password hashing
+- **Socket.IO** for WebSocket communication (with JWT handshake authentication)
+- **MongoDB** with Mongoose for room/participant persistence
+- **JWT** for authentication (REST endpoints + Socket.IO connections)
+- **node-cron** for a self-ping keep-alive job (useful on free-tier hosts that spin down idle instances)
 
-## 🚀 Getting Started
+> **Note:** Password hashing (bcrypt) is planned but not yet implemented — room passwords are currently stored and compared as plain text. This is a known issue being addressed.
+
+## Getting Started
 
 ### Prerequisites
 
@@ -148,18 +136,18 @@
 
    Navigate to `http://localhost:5173`
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 sketchbattle/
 ├── backend/
-│   ├── controllers/     # Route controllers
-│   ├── handlers/        # Socket event handlers
-│   ├── middleware/      # Auth & validation middleware
-│   ├── models/          # MongoDB models
-│   ├── routes/          # Express routes
-│   ├── services/        # Game logic & state management
-│   └── utils/           # Helper functions
+│   ├── controllers/     # Route controllers (auth, room create/join)
+│   ├── handlers/        # Socket.IO event handlers (game events, WebRTC signaling)
+│   ├── middleware/      # Socket.IO JWT auth middleware
+│   ├── models/          # MongoDB models (Room, embedded participants)
+│   ├── routes/          # Express routes (/api/rooms, /api/logout)
+│   ├── services/        # Game logic (turn/round state machine) & in-memory game state manager
+│   └── utils/           # Game config, word lists, scoring & hint helpers
 ├── frontend/
 │   ├── src/
 │   │   ├── components/  # Reusable UI components
@@ -169,32 +157,44 @@ sketchbattle/
 └── README.md
 ```
 
-## 🎨 Canvas Features
+## Canvas Features
 
 - **Drawing Tools**: Pencil, eraser, color picker
 - **Brush Sizes**: Adjustable stroke width (1-20px)
 - **Color Palette**: 12 preset colors + custom color picker
-- **Clear Canvas**: Reset drawing area
+- **Clear Canvas**: Reset drawing area (restricted server-side to the current drawer only)
 - **Real-time Sync**: All players see drawings instantly
 
-## 🔧 Configuration
+## Configuration
 
 ### Game Settings
 
-You can modify game settings in `backend/utils/gameConfig.js`:
+Core game rules and scoring live in `backend/utils/gameConfig.js`:
 
 ```javascript
 export const GAME_CONFIG = {
   MIN_PLAYERS: 2,
   MAX_PLAYERS: 8,
   TOTAL_ROUNDS: 3,
-  TURN_TIME: 80, // seconds
-  PREPARATION_TIME: 5, // seconds
-  WORD_SELECTION_TIME: 10, // seconds
+  TURN_TIME: 80, // seconds, per drawing turn
+  POINTS: {
+    FIRST_GUESS: 120,
+    SECOND_GUESS: 110,
+    THIRD_GUESS: 100,
+    LATE_GUESS: 80,
+    DRAWER: 50,
+    DRAWER_PENALTY: 60,
+  },
 };
 ```
 
-## 🚀 Deployment
+Word lists (easy/medium/hard difficulty tiers) live alongside this in the same file.
+
+> **Note:** Word-selection time (15 seconds) is currently hardcoded in `services/gameLogic.js` rather than pulled from `GAME_CONFIG` — this is planned to be extracted into a proper config value.
+>
+> **Note:** `MAX_PLAYERS` is defined but not yet enforced at the join, state-management, or database layer — a room can currently accept more than 8 participants. This is a known gap being addressed.
+
+## Deployment
 
 ### Frontend (Vercel)
 
@@ -207,8 +207,9 @@ export const GAME_CONFIG = {
 1. Connect your GitHub repo
 2. Set start command: `npm start`
 3. Add environment variables in dashboard
+4. A built-in self-ping cron job (every 10 minutes) helps keep free-tier instances warm and avoid cold-start delays
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -217,5 +218,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
-
-
