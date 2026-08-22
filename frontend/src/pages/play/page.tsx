@@ -698,7 +698,7 @@ const Page = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-slate-100">
       <Navbar socket={socket} />
 
       {/* Mobile Menu Button */}
@@ -723,14 +723,14 @@ const Page = () => {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4">
               <div className="flex items-center space-x-4">
                 <h2 className="text-base sm:text-xl font-bold text-gray-800">
-                  {gameState.state === "waiting" && "🎮 Waiting for Players"}
+                  {gameState.state === "waiting" && "Waiting for Players"}
                   {gameState.state === "playing" &&
                     gameState.round > 0 &&
-                    `🎨 Round ${gameState.round}/${gameState.totalRounds} - Turn ${currentTurn}/${totalTurnsInRound}`}
+                    `Round ${gameState.round}/${gameState.totalRounds} — Turn ${currentTurn}/${totalTurnsInRound}`}
                   {gameState.state === "playing" &&
                     gameState.round === 0 &&
-                    "🎮 Game Starting..."}
-                  {gameState.state === "ended" && "🏆 Game Ended"}
+                    "Game Starting..."}
+                  {gameState.state === "ended" && "Game Ended"}
                 </h2>
                 {gameState.state === "playing" && timeLeft > 0 && (
                   <div className="flex items-center space-x-2 text-red-500">
@@ -784,7 +784,7 @@ const Page = () => {
             >
               <div className="text-center">
                 <h3 className="text-base sm:text-lg font-bold text-green-800 mb-1">
-                  {isCurrentDrawer ? "🎨 It's Your Turn!" : "🎯 Get Ready!"}
+                  {isCurrentDrawer ? "It's Your Turn!" : "Get Ready!"}
                 </h3>
                 <p className="text-xs sm:text-sm text-green-600 mb-1">
                   {isCurrentDrawer

@@ -26,11 +26,11 @@ const RoundResultModal = ({
 
   const getModalTitle = () => {
     if (roundResults.isGameEnding) {
-      return "🏆 Game Complete!";
+      return "Game Complete";
     } else if (roundResults.isLastTurnOfRound) {
-      return `📊 Round ${roundResults.round} Complete`;
+      return `Round ${roundResults.round} Complete`;
     } else {
-      return `🎨 Turn ${roundResults.turnInRound}/${roundResults.totalTurnsInRound} Results`;
+      return `Turn ${roundResults.turnInRound}/${roundResults.totalTurnsInRound} Results`;
     }
   };
 
@@ -43,7 +43,6 @@ const RoundResultModal = ({
       return "Next Turn";
     }
   };
-
   return (
     <Modal
       title={getModalTitle()}
@@ -66,7 +65,7 @@ const RoundResultModal = ({
     >
       <div className="space-y-6">
         {/* Turn Summary */}
-        <div className="text-center bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl">
+        <div className="text-center bg-gray-50 p-4 rounded-xl border border-gray-100">
           <h3 className="text-xl font-bold mb-2">
             The word was:{" "}
             <span className="text-blue-600 text-2xl">{roundResults.word}</span>
@@ -118,10 +117,10 @@ const RoundResultModal = ({
               {roundResults.guessedPlayers.map((playerName: string, index: number) => (
                 <div key={playerName} className="flex justify-between items-center bg-white p-2 rounded">
                   <span className="flex items-center">
-                    {index === 0 && <span className="text-yellow-500 mr-2">🥇</span>}
-                    {index === 1 && <span className="text-gray-400 mr-2">🥈</span>}
-                    {index === 2 && <span className="text-orange-600 mr-2">🥉</span>}
-                    {index > 2 && <span className="text-gray-500 mr-2">#{index + 1}</span>}
+                    {index === 0 && <span className="text-yellow-500 mr-2 font-bold text-xs">1st</span>}
+                    {index === 1 && <span className="text-gray-400 mr-2 font-bold text-xs">2nd</span>}
+                    {index === 2 && <span className="text-orange-500 mr-2 font-bold text-xs">3rd</span>}
+                    {index > 2 && <span className="text-gray-500 mr-2 text-xs">#{index + 1}</span>}
                     {playerName}
                   </span>
                   <span className="text-sm text-gray-600">
@@ -135,7 +134,7 @@ const RoundResultModal = ({
           </div>
         ) : (
           <div className="bg-red-50 p-4 rounded-lg text-center">
-            <h4 className="font-semibold text-red-800 mb-2">😞 No one guessed correctly!</h4>
+            <h4 className="font-semibold text-red-800 mb-2">No one guessed correctly.</h4>
             <p className="text-red-600 text-sm">Better luck next time!</p>
           </div>
         )}
@@ -162,9 +161,9 @@ const RoundResultModal = ({
               >
                 <div className="flex items-center space-x-3">
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-sm">
-                    {index === 0 && <span className="text-lg">👑</span>}
-                    {index === 1 && <span className="text-lg">🥈</span>}
-                    {index === 2 && <span className="text-lg">🥉</span>}
+                    {index === 0 && <span className="text-xs font-bold text-yellow-600">1st</span>}
+                    {index === 1 && <span className="text-xs font-bold text-gray-500">2nd</span>}
+                    {index === 2 && <span className="text-xs font-bold text-orange-500">3rd</span>}
                     {index > 2 && <span className="text-sm font-bold text-gray-600">#{index + 1}</span>}
                   </div>
                   <div>
@@ -214,12 +213,12 @@ const RoundResultModal = ({
         </div>
 
         {roundResults.isGameEnding && (
-          <div className="text-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
-            <p className="text-green-800 font-bold text-lg">
-              🎉 Game Complete! 
+          <div className="text-center p-4 bg-gray-50 border border-gray-200 rounded-xl">
+            <p className="text-gray-800 font-bold text-lg">
+              Game Complete
             </p>
-            <p className="text-green-600 mt-1">
-              Check out the final results and rankings!
+            <p className="text-gray-600 mt-1">
+              Check out the final results and rankings.
             </p>
           </div>
         )}

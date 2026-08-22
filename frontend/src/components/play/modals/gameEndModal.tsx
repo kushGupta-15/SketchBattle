@@ -9,7 +9,7 @@ const GameEndModal = ({
 
   return (
     <Modal
-      title="🎉 Game Finished!"
+      title="Game Finished"
       open={showGameEndModal}
       footer={
         <Button
@@ -18,7 +18,7 @@ const GameEndModal = ({
             notification.success({
               message: "Game Restarted",
               description:
-                "The game will restart shortly ! Voila 🎉 ..Keep playing",
+                "The game will restart shortly. Keep playing!",
               duration: 10,
             });
             setShowGameEndModal(false);
@@ -54,11 +54,11 @@ const GameEndModal = ({
               <div className="flex items-center space-x-3">
                 <span className="text-2xl font-bold">
                   {index === 0
-                    ? "🥇"
+                    ? "1"
                     : index === 1
-                    ? "🥈"
+                    ? "2"
                     : index === 2
-                    ? "🥉"
+                    ? "3"
                     : `${index + 1}.`}
                 </span>
                 <span className="font-bold text-lg">{player.username}</span>

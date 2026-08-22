@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, message } from "antd";
-import { LuLogOut, LuCopy, LuUser, LuSparkles } from "react-icons/lu";
+import { LuLogOut, LuCopy, LuUser } from "react-icons/lu";
 import Cookies from "js-cookie";
 import axios from "axios";
 import { backend_url } from "../../utils/backend_url";
@@ -88,14 +88,14 @@ const Navbar = ({ socket }: NavbarProps) => {
   };
 
   return (
-    <div className="h-16 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 shadow-lg">
+    <div className="h-16 bg-gray-900 shadow-md">
       <div className="h-full px-4 md:px-6 flex justify-between items-center text-white">
         {/* Left Section - Logo & User */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-              <LuSparkles className="w-5 h-5" />
-            </div>
+            {/* <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"> */}
+              {/* <LuSparkles className="w-5 h-5" /> */}
+            {/* </div> */}
             <span className="font-bold text-lg hidden sm:block">
               SketchBattle
             </span>
@@ -116,9 +116,9 @@ const Navbar = ({ socket }: NavbarProps) => {
 
           <Button
             type="text"
-            icon={copied ? <LuCopy className="text-green-400" /> : <LuCopy />}
+            icon={<LuCopy className={copied ? "text-green-400" : "text-indigo-300"} />}
             onClick={copyInviteLink}
-            className="text-white hover:bg-white/10 border-white/20"
+            className="!text-indigo-300 hover:!text-indigo-200 !border-indigo-400/40 hover:!bg-indigo-500/20 !rounded-lg font-medium"
             size="small"
           >
             {copied ? "Copied!" : "Copy Invite"}
@@ -133,9 +133,9 @@ const Navbar = ({ socket }: NavbarProps) => {
           </div>
           <Button
             type="text"
-            icon={<LuCopy />}
+            icon={<LuCopy className="text-indigo-300" />}
             onClick={copyInviteLink}
-            className="text-white hover:bg-white/10"
+            className="!text-indigo-300 hover:!bg-indigo-500/20 !border-indigo-400/40 !rounded-lg"
             size="small"
           />
         </div>

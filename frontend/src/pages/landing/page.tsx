@@ -117,27 +117,26 @@ const Page = () => {
   
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-10 -left-10 w-72 h-72 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 -right-10 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute -bottom-10 left-1/3 w-80 h-80 bg-gradient-to-br from-green-400/20 to-yellow-400/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
-      </div>
+    <div className="min-h-screen bg-slate-50 relative overflow-hidden">
+      {/* Subtle dot grid background */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: "radial-gradient(circle, #cbd5e1 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+          opacity: 0.55,
+        }}
+      />
 
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
         <div className="text-center pt-8 pb-4 px-4">
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-3 tracking-tight">
             SketchBattle
           </h1>
-          <p
-            className="text-sm md:text-base max-w-md mx-auto 
-  bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600 
-  bg-clip-text text-transparent"
-          >
-            A fun multiplayer drawing and guessing game. Join or create a room
-            to start playing!
+          <p className="text-sm md:text-base max-w-md mx-auto text-gray-500">
+            A multiplayer drawing and guessing game. Join or create a room to
+            start playing.
           </p>
         </div>
 
@@ -164,8 +163,7 @@ const Page = () => {
                   >
                     <TeamOutlined className="mr-2" />
                     Join Room
-                  </button>
-                  <button
+                  </button>                  <button
                     className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                       state === "create"
                         ? "bg-white text-purple-600 shadow-md"
@@ -198,9 +196,9 @@ const Page = () => {
               {/* Join Room Section */}
               {state === "join" && (
                 <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-pink-50 to-purple-50 p-6 rounded-2xl border border-pink-100">
+                  <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                      <PlayCircleOutlined className="mr-2 text-pink-500" />
+                      <PlayCircleOutlined className="mr-2 text-gray-500" />
                       Join Existing Room
                     </h3>
                     <div className="space-y-3">
@@ -211,7 +209,7 @@ const Page = () => {
                         onChange={(e) =>
                           setJoinRoomId(e.target.value.toUpperCase())
                         }
-                        className="w-full px-4 py-3 bg-white border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-300 text-gray-800"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all duration-300 text-gray-800"
                         maxLength={10}
                       />
                       <input
@@ -219,7 +217,7 @@ const Page = () => {
                         placeholder="Room Password"
                         value={joinRoomPassword}
                         onChange={(e) => setJoinRoomPassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-white border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-300 text-gray-800"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all duration-300 text-gray-800"
                       />
                     </div>
                     <Button
@@ -229,13 +227,12 @@ const Page = () => {
                       loading={loading}
                       disabled={loading}
                       onClick={handleJoinRoom}
-                      className="w-full mt-4 h-12 text-lg font-semibold rounded-xl border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+                      className="w-full mt-4 h-12 text-lg font-semibold rounded-xl border-0 shadow-md hover:shadow-lg transition-all duration-300"
                       style={{
-                        background:
-                          "linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)",
+                        background: "#4f46e5",
                       }}
                     >
-                      Join the Fun! 🎨
+                      Join Room
                     </Button>
                   </div>
                 </div>
@@ -244,9 +241,9 @@ const Page = () => {
               {/* Create Room Section */}
               {state === "create" && (
                 <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-cyan-50 to-blue-50 p-6 rounded-2xl border border-cyan-100">
+                  <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                      <LockFilled className="mr-2 text-cyan-500" />
+                      <LockFilled className="mr-2 text-gray-500" />
                       Create New Room
                     </h3>
                     <div className="space-y-3">
@@ -257,7 +254,7 @@ const Page = () => {
                         onChange={(e) =>
                           setRoomId(e.target.value.toUpperCase())
                         }
-                        className="w-full px-4 py-3 bg-white border border-cyan-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-300 text-gray-800"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all duration-300 text-gray-800"
                         maxLength={10}
                       />
                       <input
@@ -265,7 +262,7 @@ const Page = () => {
                         placeholder="Set Room Password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-white border border-cyan-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-300 text-gray-800"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all duration-300 text-gray-800"
                       />
                     </div>
                     <Button
@@ -275,13 +272,12 @@ const Page = () => {
                       loading={loading}
                       disabled={loading}
                       onClick={handleCreateRoom}
-                      className="w-full mt-4 h-12 text-lg font-semibold rounded-xl border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+                      className="w-full mt-4 h-12 text-lg font-semibold rounded-xl border-0 shadow-md hover:shadow-lg transition-all duration-300"
                       style={{
-                        background:
-                          "linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%)",
+                        background: "#4f46e5",
                       }}
                     >
-                      Create Lobby 🚀
+                      Create Room
                     </Button>
                   </div>
                 </div>

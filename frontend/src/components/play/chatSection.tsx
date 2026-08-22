@@ -44,7 +44,7 @@ const ChatSection = ({
       >
         {messages.length === 0 ? (
           <div className="text-center text-gray-400 text-sm py-4">
-            No messages yet. Start the conversation! 💬
+            No messages yet. Start the conversation.
           </div>
         ) : (
           messages.map((msg: any, index: any) => (
@@ -54,9 +54,8 @@ const ChatSection = ({
                   msg.username === "System" ? "text-green-600" : "text-blue-600"
                 }`}
               >
-                {msg.username === "System" ? "🤖 System" : `👤 ${msg.username}`}
-                :
-              </span>
+                {msg.username === "System" ? "System" : msg.username}
+                :</span>
               <span className="ml-2 text-gray-700">{msg.message}</span>
             </div>
           ))

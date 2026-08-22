@@ -116,13 +116,13 @@ const PlayerList = ({
                   }
             }
           >
-            {isReady ? "✅ Ready!" : "🎮 Get Ready"}
+            {isReady ? "Ready!" : "Get Ready"}
           </Button>
 
           {canStart ? (
             <div className="text-center">
-              <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold animate-pulse">
-                🚀 Starting Game...
+              <div className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-xl font-semibold">
+                Starting Game...
               </div>
             </div>
           ) : (
