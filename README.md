@@ -30,7 +30,7 @@
 - **Timed Rounds & Turns** - Fast-paced gameplay with countdown timers (80-second drawing turns, 15-second word selection)
 - **Rank-Based Scoring System** - The faster you guess relative to other players, the more points you earn (1st, 2nd, 3rd, and late-guess tiers)
 - **Private Rooms** - Create password-protected lobbies for your friends
-- **JWT Authentication** - Secure token-based user sessions (REST + Socket.IO)
+- **JWT Authentication** - Token-based user sessions (REST + Socket.IO)
 - **Responsive Design** - Play on desktop, tablet, or mobile
 - **Real-time Communication** - Instant updates via WebSockets
 - **Customizable Drawing Tools** - Choose colors, brush sizes, and clear the canvas
@@ -193,6 +193,14 @@ Word lists (easy/medium/hard difficulty tiers) live alongside this in the same f
 > **Note:** Word-selection time (15 seconds) is currently hardcoded in `services/gameLogic.js` rather than pulled from `GAME_CONFIG` — this is planned to be extracted into a proper config value.
 >
 > **Note:** `MAX_PLAYERS` is defined but not yet enforced at the join, state-management, or database layer — a room can currently accept more than 8 participants. This is a known gap being addressed.
+>
+> **Note:** Only the `medium` word list is currently used during gameplay — difficulty selection isn't wired up yet, so `easy` and `hard` are defined in config but unused by the game logic.
+
+### Known Issues
+
+- **Guess-tracking on reconnect**: a player's "already guessed correctly" status is tracked per socket connection rather than per user. If a player reconnects mid-turn (e.g. after a dropped connection), they can guess correctly a second time in that same turn. Score updates are otherwise unaffected.
+- **WebRTC signaling scope**: the offer/answer/ICE-candidate relay forwards messages by socket ID without verifying that the sender and recipient are in the same room. Low practical impact (the browser's own SDP/ICE handshake still has to succeed), but it's not currently authorized server-side.
+- **Room cleanup on explicit leave**: rooms are cleaned up from in-memory game state after a disconnect-driven empty room, but not after all players use the explicit "leave" action — this is being addressed to avoid unnecessary memory growth on long-running server instances.
 
 ## Deployment
 
