@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { io } from "socket.io-client";
-import Cookies from "js-cookie";
-import { message as m, Slider, Button, Progress, Card } from "antd";
+import { useState, useRef } from "react";
+import { useParams } from "react-router-dom";
+import { Slider, Button, Progress, Card } from "antd";
 import Navbar from "../../components/play/navbar";
 import PlayerList from "../../components/play/playerList";
 import WordSelectModal from "../../components/play/modals/wordSelectModal";
@@ -10,7 +8,9 @@ import RoundResultModal from "../../components/play/modals/roundResultModal";
 import GameEndModal from "../../components/play/modals/gameEndModal";
 import ChatSection from "../../components/play/chatSection";
 import VideoCall from "../../components/play/VideoCall";
-import { Player, GameState, ChatMessage, DrawData } from "../../types/types";
+import DrawingTools from "../../components/play/drawingtools";
+import { useCanvasDrawing } from "../../hooks/useCanvasDrawing";
+import { useGameSocket } from "../../hooks/useGameSocket";
 import {
   LuEraser,
   LuPalette,
@@ -22,784 +22,77 @@ import {
   LuPaintBucket,
   LuUndo2,
 } from "react-icons/lu";
-import { backend_url } from "../../utils/backend_url";
-import DrawingTools from "../../components/play/drawingtools";
-import { useVoiceFeedback } from "../../hooks/useVoiceFeedback";
-import { floodFill } from "../../utils/floodFill";
-import { soundEffects } from "../../utils/soundEffects";
 
-// interface DrawData {
-//   x: number;
-//   y: number;
-//   lastX: number | null;
-//   lastY: number | null;
-//   roomId: string;
-//   color: string;
-//   stroke: number;
-// }
-
-// interface ChatMessage {
-//   message: string;
-//   roomId: string;
-//   username: string;
-// }
-
-// interface GameState {
-//   state: "waiting" | "playing" | "ended";
-//   round: number;
-//   totalRounds: number;
-//   players: any[];
-//   scores: { [key: string]: number };
-//   currentDrawer: string | null;
-//   timeLeft: number;
-// }
+const PALETTE = [
+  { name: "Black", value: "#000000" },
+  { name: "White", value: "#ffffff" },
+  { name: "Red", value: "#ef4444" },
+  { name: "Blue", value: "#3b82f6" },
+  { name: "Green", value: "#10b981" },
+  { name: "Yellow", value: "#f59e0b" },
+  { name: "Orange", value: "#f97316" },
+  { name: "Purple", value: "#8b5cf6" },
+  { name: "Pink", value: "#ec4899" },
+  { name: "Brown", value: "#78350f" },
+  { name: "Gray", value: "#6b7280" },
+  { name: "Cyan", value: "#06b6d4" },
+];
 
 const Page = () => {
-  const token = Cookies.get("token");
-  const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const chatRef = useRef<HTMLDivElement | null>(null);
-  const { speak } = useVoiceFeedback({ enabled: true, volume: 1 });
 
-  // State management
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [message, setMessage] = useState<string>("");
-  const [isDrawing, setIsDrawing] = useState<boolean>(false);
-  const [currentColor, setCurrentColor] = useState<string>("#000000");
-  const [currentStroke, setCurrentStroke] = useState<number>(4);
-  const [toolMode, setToolMode] = useState<"brush" | "fill" | "eraser">("brush");
-  const isErasing = toolMode === "eraser";
-  const currentStrokeId = useRef<string>("");
-  const lastWarnSecond = useRef<number>(-1);
-  const [username, setUsername] = useState<string>(
-    Cookies.get("username") || ""
-  );
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [isReady, setIsReady] = useState<boolean>(false);
-  const [canStart, setCanStart] = useState<boolean>(false);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
-  const [wordChoices, setWordChoices] = useState<string[]>([]);
-  const [currentWord, setCurrentWord] = useState<string>("");
-  const [wordHint, setWordHint] = useState<string>("");
-  const [isCurrentDrawer, setIsCurrentDrawer] = useState(false);
-  const [roundResults, setRoundResults] = useState<any>(null);
-  const [gameResults, setGameResults] = useState<any>(null);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] =
-    useState<boolean>(false);
+  // Modular custom socket & game state hook
+  const {
+    socket,
+    messages,
+    message,
+    setMessage,
+    sendMessage,
+    handleKeyPress,
+    players,
+    isReady,
+    canStart,
+    timeLeft,
+    formatTime,
+    wordChoices,
+    currentWord,
+    wordHint,
+    isCurrentDrawer,
+    roundResults,
+    gameResults,
+    preparationCountdown,
+    showPreparation,
+    currentTurn,
+    totalTurnsInRound,
+    gameState,
+    activeModal,
+    closeAllModals,
+    toggleReady,
+    selectWord,
+  } = useGameSocket({ roomId });
 
-  // New state variables for game flow
-  const [preparationCountdown, setPreparationCountdown] = useState<number>(0);
-  const [showPreparation, setShowPreparation] = useState<boolean>(false);
-  const [currentTurn, setCurrentTurn] = useState<number>(0);
-  const [totalTurnsInRound, setTotalTurnsInRound] = useState<number>(0);
-
-  // Game state
-  const [gameState, setGameState] = useState<GameState>({
-    state: "waiting",
-    round: 0,
-    totalRounds: 3,
-    players: [],
-    scores: {},
-    currentDrawer: null,
-    timeLeft: 0,
+  // Modular canvas drawing hook
+  const {
+    canvasRef,
+    currentColor,
+    currentStroke,
+    toolMode,
+    isErasing,
+    setToolMode,
+    handleColorChange,
+    handleStrokeChange,
+    clearCanvas,
+    handleUndo,
+    startDrawing,
+    stopDrawing,
+    draw,
+  } = useCanvasDrawing({
+    socket,
+    roomId,
+    isCurrentDrawer,
   });
-
-  // Modal state management
-  const [activeModal, setActiveModal] = useState<
-    "none" | "wordSelect" | "roundResult" | "gameEnd"
-  >("none");
-
-  // Canvas refs
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const lastCoords = useRef<{ x: number | null; y: number | null }>({
-    x: null,
-    y: null,
-  });
-
-  // Socket initialization
-  const socket = useMemo(() => {
-    if (!token) return null;
-    return io(`${backend_url}`, {
-      auth: { token },
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
-  }, [token]);
-
-  // Modal helpers
-  const openModal = (modal: "wordSelect" | "roundResult" | "gameEnd") => {
-    setActiveModal(modal);
-  };
-
-  const closeAllModals = () => {
-    setActiveModal("none");
-  };
-
-  // Format time utility
-  const formatTime = (ms: number) => {
-    const seconds = Math.floor(ms / 1000);
-    return `${Math.floor(seconds / 60)}:${(seconds % 60)
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
-  // Ready toggle
-  const toggleReady = () => {
-    if (socket) {
-      socket.emit("playerReady");
-    }
-  };
-
-  // Word selection
-  const selectWord = (word: string) => {
-    if (socket) {
-      socket.emit("selectWord", word);
-      closeAllModals();
-    }
-  };
-
-  // Auth check
-  useEffect(() => {
-    if (!token) {
-      m.error("You must be logged in to access this page");
-      navigate("/");
-    }
-  }, [token, navigate]);
-
-  // Socket connection and room joining
-  useEffect(() => {
-    if (!socket || !roomId) return;
-
-    const handleConnect = () => {
-      const username = Cookies.get("username") || "";
-      setUsername(username);
-      socket.emit("joinRoom", roomId, username);
-    };
-
-    if (socket.connected) {
-      handleConnect();
-    }
-
-    socket.on("connect", handleConnect);
-
-    socket.on("disconnect", () => {
-      m.warning("Disconnected from server. ");
-    });
-
-    socket.io.on("reconnect", () => {
-      m.info("Reconnected to server!");
-    });
-
-    return () => {
-      socket.off("connect", handleConnect);
-      socket.off("disconnect");
-      socket.io.off("reconnect");
-    };
-  }, [socket, roomId]);
-
-  // Canvas initialization and drawing events
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !socket) return;
-
-    const resizeCanvas = () => {
-      // Keep fixed internal resolution
-      canvas.width = 800;
-      canvas.height = 600;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.lineWidth = currentStroke;
-      ctx.strokeStyle = currentColor;
-      ctxRef.current = ctx;
-
-      // Restore canvas history after resize
-      const history = JSON.parse(
-        sessionStorage.getItem(`canvas-${roomId}`) || "[]"
-      );
-      history.forEach((data: DrawData) => {
-        handleDrawEvent(data);
-      });
-    };
-
-    const handleDrawEvent = (data: DrawData) => {
-      const canvas = canvasRef.current;
-      if (!ctxRef.current || !canvas) return;
-
-      if (data.type === "fill") {
-        floodFill(canvas, data.x, data.y, data.color);
-        return;
-      }
-
-      ctxRef.current.strokeStyle = data.color;
-      ctxRef.current.lineWidth = data.stroke;
-      ctxRef.current.beginPath();
-      ctxRef.current.moveTo(data.lastX || data.x, data.lastY || data.y);
-      ctxRef.current.lineTo(data.x, data.y);
-      ctxRef.current.stroke();
-    };
-
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
-
-    socket.on("draw", (data: DrawData) => {
-      handleDrawEvent(data);
-      // Save to session storage for canvas persistence
-      const history = JSON.parse(
-        sessionStorage.getItem(`canvas-${roomId}`) || "[]"
-      );
-      history.push(data);
-      sessionStorage.setItem(`canvas-${roomId}`, JSON.stringify(history));
-    });
-
-    socket.on("canvasHistory", (history: DrawData[]) => {
-      if (canvas && ctxRef.current) {
-        ctxRef.current.clearRect(0, 0, canvas.width, canvas.height);
-        history.forEach(handleDrawEvent);
-        sessionStorage.setItem(`canvas-${roomId}`, JSON.stringify(history));
-      }
-    });
-
-    socket.on("canvasClear", () => {
-      if (canvas && ctxRef.current) {
-        ctxRef.current.clearRect(0, 0, canvas.width, canvas.height);
-        sessionStorage.removeItem(`canvas-${roomId}`);
-      }
-    });
-
-    return () => {
-      window.removeEventListener("resize", resizeCanvas);
-      socket.off("draw");
-      socket.off("canvasHistory");
-      socket.off("canvasClear");
-    };
-  }, [socket, roomId, currentColor, currentStroke]);
-
-  // Game event handlers
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on("gameState", (state: GameState) => {
-      console.log("Received gameState:", state); // Debug log
-      setGameState(state);
-      setTimeLeft(state.timeLeft);
-
-      // FIX: Properly determine if current user is the drawer
-      const currentUsername = Cookies.get("username");
-      const isDrawer = state.currentDrawer === currentUsername;
-      setIsCurrentDrawer(isDrawer);
-
-      console.log(
-        `Current drawer: ${state.currentDrawer}, Current user: ${currentUsername}, Is drawer: ${isDrawer}`
-      );
-    });
-
-    socket.on(
-      "timeUpdate",
-      (data: { timeLeft: number; roundEndTime: number; wordHint?: string }) => {
-        setTimeLeft(data.timeLeft);
-        if (data.timeLeft <= 10000 && data.timeLeft > 0) {
-          const sec = Math.floor(data.timeLeft / 1000);
-          if (sec !== lastWarnSecond.current) {
-            lastWarnSecond.current = sec;
-            soundEffects.playTimeWarning();
-          }
-        }
-        // Always update word hint when provided (for non-drawers)
-        if (data.wordHint && !isCurrentDrawer) {
-          setWordHint(data.wordHint);
-          console.log("Updated word hint:", data.wordHint); // Debug log
-        }
-      }
-    );
-
-    socket.on("playerUpdate", (data: any) => {
-      setPlayers(data.players);
-      setCanStart(data.canStart || false);
-      const currentPlayer = data.players.find(
-        (p: Player) => p.username === username
-      );
-      setIsReady(currentPlayer?.isReady || false);
-    });
-
-    socket.on("gameStarting", (data: any) => {
-      m.success(data.message);
-      setCanStart(false);
-      // Update game state to playing
-      setGameState((prev) => ({
-        ...prev,
-        state: "playing",
-      }));
-    });
-
-    // Fix the newTurn handler to properly set drawer state
-    socket.on("newTurn", (data: any) => {
-      soundEffects.playTurnStart();
-      console.log("New turn data:", data); // Debug log
-      setShowPreparation(true);
-      setCurrentTurn(data.turnInRound);
-      setTotalTurnsInRound(data.totalTurnsInRound);
-
-      
-      const currentUsername = Cookies.get("username");
-      const isDrawer = data.drawer === currentUsername;
-      setIsCurrentDrawer(isDrawer);
-
-      // Properly update game state
-      setGameState((prev) => ({
-        ...prev,
-        state: "playing", // Ensure state is playing
-        round: data.round,
-        totalRounds: data.totalRounds || 3,
-        currentDrawer: data.drawer,
-      }));
-
-      closeAllModals();
-
-      if (isDrawer) {
-        speak("It's your turn to draw!");
-        m.info(`Turn ${data.turnInRound}: It's your turn to draw!`);
-      } else {
-        speak(`${data.drawer} will draw next!`);
-        m.info(
-          `Turn ${data.turnInRound}: ${data.drawer} is preparing to draw!`
-        );
-      }
-    });
-
-    socket.on("preparationCountdown", (data: any) => {
-      setPreparationCountdown(data.countdown);
-      if (data.countdown <= 0) {
-        setShowPreparation(false);
-      }
-    });
-
-    socket.on("wordChoices", (data: any) => {
-      console.log("Word choices received:", data); // Debug log
-      setWordChoices(data.words);
-      openModal("wordSelect");
-    });
-
-    
-    socket.on("drawingPhase", (data: any) => {
-      console.log("Drawing phase started:", data); // Debug log
-      setShowPreparation(false);
-      setCurrentTurn(data.turn);
-
-      
-      const currentUsername = Cookies.get("username");
-      const isDrawer = data.drawer === currentUsername;
-      setIsCurrentDrawer(isDrawer);
-
-      // Update game state and word hint
-      setGameState((prev) => ({
-        ...prev,
-        state: "playing",
-        round: data.round,
-        currentDrawer: data.drawer,
-      }));
-
-      // Set initial word hint for non-drawers
-      if (!isDrawer) {
-        setWordHint(data.word); // This should be the underscore version
-        console.log("Set word hint for guesser:", data.word); // Debug log
-      }
-
-      closeAllModals();
-
-      if (isDrawer) {
-        m.success("Start drawing now!");
-      } else {
-        m.info(`${data.drawer} is now drawing! Try to guess the word!`);
-      }
-    });
-
-    socket.on("drawerWord", (data: any) => {
-      console.log("Drawer word received:", data); // Debug log
-
-      
-      const currentUsername = Cookies.get("username");
-      if (gameState.currentDrawer === currentUsername) {
-        setCurrentWord(data.word);
-      }
-    });
-
-    socket.on("correctGuess", (data: any) => {
-      soundEffects.playCorrectGuess();
-      m.success(`${data.username} guessed correctly! +${data.points} points`);
-      if (data.username === Cookies.get("username")) {
-        speak("Correct! Well done!");
-      } else {
-        speak(`${data.username} got it right!`);
-      }  
-    });
-
-    socket.on("scoreUpdate", (data: any) => {
-      setGameState((prev) => ({ ...prev, scores: data.scores }));
-    });
-
-    // Listen for drawer penalty
-    socket.on("drawerPenalty", (data: any) => {
-      soundEffects.playPenalty();
-      m.error({
-        content: (
-          <div>
-            <div className="font-bold text-red-600">😞 No one guessed!</div>
-            <div>{data.message}</div>
-            <div className="text-sm text-gray-600">-{data.penalty} points</div>
-          </div>
-        ),
-        duration: 4,
-      });
-    });
-
-    // Enhanced turn end handler
-    socket.on("turnEnd", (data: any) => {
-      console.log("Turn ended:", data);
-
-      if (data.noOneGuessed) {
-        m.warning({
-          content: `The word was: "${data.word}" - No one guessed it!`,
-          duration: 3,
-        });
-      } else {
-        m.success({
-          content: `The word was: "${data.word}"`,
-          duration: 3,
-        });
-      }
-
-      // Update game state...
-      setGameState((prev) => ({
-        ...prev,
-        scores: data.scores,
-      }));
-
-  
-      setRoundResults({
-        round: data.round,
-        totalRounds: data.totalRounds || 3,
-        turnInRound: data.turnInRound,
-        totalTurnsInRound: data.totalTurnsInRound,
-        scores: data.scores,
-        word: data.word,
-        drawer: data.drawer,
-        guessedPlayers: data.guessedPlayers || [],
-        noOneGuessed: data.noOneGuessed,
-        drawerPointsAwarded: data.drawerPointsAwarded,
-        isTurnResult: true, // Flag to distinguish from round complete
-        isLastTurnOfRound: data.turnInRound === data.totalTurnsInRound,
-        isGameEnding: data.round >= data.totalRounds && data.turnInRound === data.totalTurnsInRound
-      });
-      
-      // Show the modal for turn results
-      openModal("roundResult");
-    });
-
-    socket.on("roundComplete", (data: any) => {
-      m.success(`Round ${data.round} completed!`);
-      // Don't show modal here since turnEnd already showed it
-      // The modal will automatically show "Continue to next round" for the last turn
-    });
-
-    socket.on("gameEnd", (data: any) => {
-      soundEffects.playGameEnd();
-      setGameResults(data);
-      setGameState((prev) => ({ ...prev, state: "ended" }));
-      
-      // FIX: Show different message for insufficient players
-      if (data.reason === 'insufficient_players') {
-        m.warning({
-          content: data.message,
-          duration: 5,
-        });
-      } else {
-        m.success({
-          content: "Game completed! Check the final results.",
-          duration: 3,
-        });
-      }
-      
-      openModal("gameEnd");
-    });
-
-    socket.on("chatMessage", (message: ChatMessage) => {
-      if (message.username === "System" && message.message?.includes("is very close!")) {
-        soundEffects.playCloseGuess();
-      }
-      setMessages((prev) => [...prev, message]);
-    });
-
-    socket.on("joinMessage", (data: any) => {
-      setMessages((prev) => [...prev, { ...data, username: "System" }]);
-    });
-
-    socket.on("leaveMessage", (data: any) => {
-      setMessages((prev) => [...prev, { ...data, username: "System" }]);
-      setPlayers((prev) =>
-        prev.filter((player) => player.username !== data.username)
-      );
-    });
-
-    socket.on("gameReset", (data: any) => {
-      setGameState({
-        state: "waiting",
-        round: 0,
-        totalRounds: 3,
-        players: [],
-        scores: {},
-        currentDrawer: null,
-        timeLeft: 0,
-      });
-      setIsReady(false);
-      setCanStart(false);
-      setTimeLeft(0);
-      setCurrentWord("");
-      setWordHint("");
-      setIsCurrentDrawer(false);
-      closeAllModals();
-      sessionStorage.removeItem(`canvas-${roomId}`);
-
-      m.info(data.message);
-    });
-
-    return () => {
-      socket.off("gameState");
-      socket.off("timeUpdate");
-      socket.off("playerUpdate");
-      socket.off("gameStarting");
-      socket.off("newTurn");
-      socket.off("preparationCountdown");
-      socket.off("wordChoices");
-      socket.off("drawingPhase");
-      socket.off("drawerWord");
-      socket.off("correctGuess");
-      socket.off("scoreUpdate");
-      socket.off("turnEnd");
-      socket.off("roundComplete");
-      socket.off("gameEnd");
-      socket.off("chatMessage");
-      socket.off("joinMessage");
-      socket.off("leaveMessage");
-      socket.off("gameReset");
-      socket.off("drawerPenalty");
-    };
-  }, [socket, username, roomId, players, gameState.currentDrawer]);
-
-  // Canvas update on color/stroke change
-  useEffect(() => {
-    if (ctxRef.current) {
-      ctxRef.current.strokeStyle = currentColor;
-      ctxRef.current.lineWidth = currentStroke;
-    }
-  }, [currentColor, currentStroke]);
-
-  // Drawing handlers
-  const getCoordinates = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
-  ) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    if ("touches" in e) {
-      // Touch event
-      const touch = e.touches[0] || e.changedTouches[0];
-      return {
-        x: (touch.clientX - rect.left) * scaleX,
-        y: (touch.clientY - rect.top) * scaleY,
-      };
-    } else {
-      // Mouse event
-      return {
-        x: (e.clientX - rect.left) * scaleX,
-        y: (e.clientY - rect.top) * scaleY,
-      };
-    }
-  };
-
-  const handleUndo = () => {
-    if (!socket || !isCurrentDrawer) return;
-    socket.emit("undoDraw");
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
-        if (
-          document.activeElement?.tagName === "INPUT" ||
-          document.activeElement?.tagName === "TEXTAREA"
-        ) {
-          return;
-        }
-        if (isCurrentDrawer && socket) {
-          e.preventDefault();
-          handleUndo();
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isCurrentDrawer, socket]);
-
-  const startDrawing = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
-  ) => {
-    if (!isCurrentDrawer || !ctxRef.current || !socket || !roomId) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    e.preventDefault();
-    const coords = getCoordinates(e);
-
-    if (toolMode === "fill") {
-      const fillColor = currentColor;
-      floodFill(canvas, coords.x, coords.y, fillColor);
-
-      const fillData: DrawData = {
-        x: coords.x,
-        y: coords.y,
-        lastX: coords.x,
-        lastY: coords.y,
-        roomId,
-        color: fillColor,
-        stroke: 1,
-        type: "fill",
-        strokeId: `fill-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      };
-
-      socket.emit("draw", fillData);
-      return;
-    }
-
-    setIsDrawing(true);
-    currentStrokeId.current = `stroke-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    lastCoords.current = coords;
-
-    const color = toolMode === "eraser" ? "white" : currentColor;
-    const stroke = toolMode === "eraser" ? 20 : currentStroke;
-
-    const initialDrawData: DrawData = {
-      x: coords.x,
-      y: coords.y,
-      lastX: coords.x,
-      lastY: coords.y,
-      roomId,
-      color,
-      stroke,
-      type: "stroke",
-      strokeId: currentStrokeId.current,
-    };
-
-    socket.emit("draw", initialDrawData);
-
-    ctxRef.current.strokeStyle = color;
-    ctxRef.current.lineWidth = stroke;
-    ctxRef.current.beginPath();
-    ctxRef.current.moveTo(coords.x, coords.y);
-    ctxRef.current.lineTo(coords.x, coords.y);
-    ctxRef.current.stroke();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-    lastCoords.current = { x: null, y: null };
-  };
-
-  const draw = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
-  ) => {
-    if (!isDrawing || !ctxRef.current || !socket || !roomId || !isCurrentDrawer)
-      return;
-
-    e.preventDefault();
-    const coords = getCoordinates(e);
-    const color = toolMode === "eraser" ? "white" : currentColor;
-    const stroke = toolMode === "eraser" ? 20 : currentStroke;
-
-    const drawData: DrawData = {
-      x: coords.x,
-      y: coords.y,
-      lastX: lastCoords.current.x,
-      lastY: lastCoords.current.y,
-      roomId,
-      color,
-      stroke,
-      type: "stroke",
-      strokeId: currentStrokeId.current,
-    };
-
-    socket.emit("draw", drawData);
-
-    // Draw locally
-    ctxRef.current.strokeStyle = color;
-    ctxRef.current.lineWidth = stroke;
-    ctxRef.current.beginPath();
-    ctxRef.current.moveTo(lastCoords.current.x!, lastCoords.current.y!);
-    ctxRef.current.lineTo(coords.x, coords.y);
-    ctxRef.current.stroke();
-
-    lastCoords.current = coords;
-  };
-
-  // Chat functions
-  const sendMessage = () => {
-    if (!message.trim() || !socket || !roomId) return;
-
-    const chatMessage: ChatMessage = {
-      message: message.trim(),
-      roomId,
-      username: Cookies.get("username") || "",
-    };
-
-    socket.emit("chatMessage", chatMessage);
-    setMessage("");
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  // Tool handlers
-  const handleColorChange = (color: string) => {
-    setCurrentColor(color);
-    if (toolMode === "eraser") setToolMode("brush");
-  };
-
-  const handleStrokeChange = (stroke: number) => {
-    setCurrentStroke(stroke);
-  };
-
-  const clearCanvas = () => {
-    if (!socket || !isCurrentDrawer) return;
-    socket.emit("clearCanvas");
-  };
-
-  const colors = [
-    { name: "Black", value: "#000000" },
-    { name: "White", value: "#ffffff" },
-    { name: "Red", value: "#ef4444" },
-    { name: "Blue", value: "#3b82f6" },
-    { name: "Green", value: "#10b981" },
-    { name: "Yellow", value: "#f59e0b" },
-    { name: "Orange", value: "#f97316" },
-    { name: "Purple", value: "#8b5cf6" },
-    { name: "Pink", value: "#ec4899" },
-    { name: "Brown", value: "#78350f" },
-    { name: "Gray", value: "#6b7280" },
-    { name: "Cyan", value: "#06b6d4" },
-  ];
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -820,7 +113,7 @@ const Page = () => {
         {/* Main Game Area */}
         <div className="flex-1 flex flex-col space-y-2 md:space-y-4 min-h-0">
           {/* Game Header */}
-          <Card 
+          <Card
             className="bg-white/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl"
             styles={{ body: { padding: "12px 16px" } }}
           >
@@ -882,7 +175,7 @@ const Page = () => {
 
           {/* Preparation Banner */}
           {showPreparation && (
-            <Card 
+            <Card
               className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 shadow-lg rounded-2xl"
               styles={{ body: { padding: "12px 16px" } }}
             >
@@ -904,9 +197,9 @@ const Page = () => {
             </Card>
           )}
 
-          {/* Canvas and Tools */}
+          {/* Canvas and Drawing Tools */}
           <div className="flex-1 flex flex-col lg:flex-row gap-2 md:gap-4 min-h-0">
-            {/* Canvas */}
+            {/* HTML5 Canvas */}
             <div className="flex-1 bg-white rounded-2xl shadow-lg p-2 md:p-4 flex items-center justify-center relative min-h-0 overflow-hidden">
               <canvas
                 ref={canvasRef}
@@ -920,7 +213,7 @@ const Page = () => {
                 className={`max-w-full max-h-full aspect-[4/3] border-2 border-gray-200 rounded-xl shadow-inner bg-white
                   ${
                     isCurrentDrawer
-                      ? isErasing
+                      ? toolMode === "eraser"
                         ? "cursor-crosshair"
                         : "cursor-crosshair"
                       : "cursor-not-allowed"
@@ -951,7 +244,6 @@ const Page = () => {
             {isCurrentDrawer && (
               <div className="lg:hidden bg-white rounded-2xl shadow-lg p-3 flex flex-col gap-2 shrink-0">
                 <div className="flex items-center justify-between gap-2">
-                  {/* Tool Modes (Brush, Bucket, Eraser, Undo, Clear) */}
                   <div className="flex gap-1.5 shrink-0">
                     <Button
                       type={toolMode === "brush" ? "primary" : "default"}
@@ -1009,12 +301,12 @@ const Page = () => {
 
                 {/* Colors - Mobile */}
                 <div className="flex gap-2 overflow-x-auto py-1">
-                  {colors.map((color) => (
+                  {PALETTE.map((color) => (
                     <button
                       key={color.value}
                       onClick={() => handleColorChange(color.value)}
                       className={`w-7 h-7 rounded-full shadow-sm border-2 shrink-0 transition-transform ${
-                        currentColor === color.value && toolMode !== "eraser"
+                        currentColor === color.value && !isErasing
                           ? "border-purple-600 scale-110 ring-2 ring-purple-300"
                           : "border-gray-200"
                       }`}
@@ -1032,8 +324,6 @@ const Page = () => {
         <div
           className={`w-full lg:w-80 space-y-4 ${
             isMobileSidebarOpen ? "block" : "hidden lg:block"
-          } ${
-            isMobileSidebarOpen ? "fixed inset-0 z-40 bg-white p-4 pt-20 overflow-y-auto pb-24" : ""
           }`}
         >
           {/* Player List */}
@@ -1045,29 +335,32 @@ const Page = () => {
             canStart={canStart}
           />
 
-          {/* <VideoCall socket={socket} players={players} selfId={socket?.id}/> */}
+          {/* Video Call */}
           <VideoCall socket={socket} players={players} selfId={socket?.id} />
 
           {/* Chat Section */}
-          <ChatSection
-            messages={messages}
-            setMessage={setMessage}
-            message={message}
-            sendMessage={sendMessage}
-            chatRef={chatRef}
-            handleKeyPress={handleKeyPress}
-            socket={socket}
-          />
+          <div ref={chatRef} className="h-64 sm:h-80">
+            <ChatSection
+              messages={messages}
+              setMessage={setMessage}
+              message={message}
+              sendMessage={sendMessage}
+              chatRef={chatRef}
+              handleKeyPress={handleKeyPress}
+              socket={socket}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Word Select Modal */}
       <WordSelectModal
         showWordModal={activeModal === "wordSelect"}
         wordChoices={wordChoices}
         selectWord={selectWord}
       />
 
+      {/* Round/Turn Result Modal */}
       <RoundResultModal
         showResultsModal={activeModal === "roundResult"}
         setShowResultsModal={() => closeAllModals()}
@@ -1076,6 +369,7 @@ const Page = () => {
         gameState={gameState}
       />
 
+      {/* Game End Modal */}
       <GameEndModal
         showGameEndModal={activeModal === "gameEnd"}
         setShowGameEndModal={() => closeAllModals()}
@@ -1083,13 +377,6 @@ const Page = () => {
       />
     </div>
   );
-
-  
 };
 
 export default Page;
-
-
-
-
-

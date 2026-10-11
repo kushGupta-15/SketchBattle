@@ -60,6 +60,8 @@ Gameplay polish and creative tools. Canvas paint bucket (high-performance 4-way 
 
 Customizable room game rules. Room creators can customize total rounds (2-8), draw turn timer (45s, 60s, 80s, 100s), word difficulty tiers (easy, medium, hard, mixed), and optionally inject custom word lists.
 
+Modular architecture & test defense. The monolithic play page is decomposed into dedicated custom hooks (`useCanvasDrawing` for canvas math, flood fill, scaling, and stroke undo; `useGameSocket` for real-time socket events, turn state machine, scoring, and cues). The backend is protected by sliding-window IP rate limiting (`rateLimiter.js`), strict regex input sanitization, and an automated test suite verifying scoring, hint revelations, Levenshtein distance close guesses, stroke undo, and reconnection score retention.
+
 ## Known limitations and roadmap
 
-Recent improvements completed Phase 1 (room password bcrypt hashing, 8-player cap enforcement, mid-turn canvas restoration, spoiler chat isolation, WebRTC room scope checks, 24-hr TTL index) and Phase 2 (canvas flood fill paint bucket, stroke undo stack, Web Audio SFX synthesizer, custom room settings & difficulty tiers, 12-color palette). Active backlog includes room lobby chat pre-game and spectator mode for joining mid-match.
+Recent improvements completed Phase 1 (room password bcrypt hashing, 8-player cap enforcement, mid-turn canvas restoration, spoiler chat isolation, WebRTC room scope checks, 24-hr TTL index), Phase 2 (canvas flood fill paint bucket, stroke undo stack, Web Audio SFX synthesizer, custom room settings & difficulty tiers, 12-color palette), and Phase 3 (monolithic page component decomposition into custom hooks, automated backend test suite, sliding window rate limiting, and regex input validation). Active backlog includes lobby chat pre-game and spectator mode for joining mid-match.

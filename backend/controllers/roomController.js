@@ -19,12 +19,22 @@ export const createRoom = async (req, res) => {
       return res.status(400).json({ message: "Username 'system' is reserved" });
     }
 
-    if (cleanUsername.length > 20) {
-      return res.status(400).json({ message: "Username must be 20 characters or fewer" });
+    const usernameRegex = /^[A-Za-z0-9_-]{2,20}$/;
+    if (!usernameRegex.test(cleanUsername)) {
+      return res.status(400).json({
+        message: "Username must be 2-20 characters long and contain only letters, numbers, underscores, or hyphens",
+      });
     }
 
-    if (cleanRoomId.length > 30) {
-      return res.status(400).json({ message: "Room ID must be 30 characters or fewer" });
+    const roomIdRegex = /^[A-Za-z0-9_-]{2,30}$/;
+    if (!roomIdRegex.test(cleanRoomId)) {
+      return res.status(400).json({
+        message: "Room ID must be 2-30 characters long and contain only letters, numbers, underscores, or hyphens",
+      });
+    }
+
+    if (typeof password !== "string" || password.length < 1 || password.length > 64) {
+      return res.status(400).json({ message: "Password must be between 1 and 64 characters" });
     }
 
     const roomExists = await Room.findOne({ roomId: cleanRoomId });
@@ -94,6 +104,20 @@ export const joinRoom = async (req, res) => {
 
     if (cleanUsername.toLowerCase() === "system") {
       return res.status(400).json({ message: "Username 'system' is reserved" });
+    }
+
+    const usernameRegex = /^[A-Za-z0-9_-]{2,20}$/;
+    if (!usernameRegex.test(cleanUsername)) {
+      return res.status(400).json({
+        message: "Username must be 2-20 characters long and contain only letters, numbers, underscores, or hyphens",
+      });
+    }
+
+    const roomIdRegex = /^[A-Za-z0-9_-]{2,30}$/;
+    if (!roomIdRegex.test(cleanRoomId)) {
+      return res.status(400).json({
+        message: "Room ID must be 2-30 characters long and contain only letters, numbers, underscores, or hyphens",
+      });
     }
 
     const room = await Room.findOne({ roomId: cleanRoomId });

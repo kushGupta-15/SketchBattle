@@ -31,7 +31,9 @@
 - **Voice Input & Feedback** - Speech recognition for guessing and speech synthesis game announcements
 - **Smart Reconnection** - Reconnect without score resets, with automatic mid-turn canvas stroke restoration
 - **Rank-Based Scoring System** - Speed-tiered guessing points with drawer bonuses and penalties
-- **Security & Hygiene** - bcrypt password hashing, 8-player lobby cap, 24-hour TTL index in MongoDB, and isolated spoiler chat for correct guessers
+- **Modular React Architecture** - Custom hooks (`useCanvasDrawing`, `useGameSocket`) separate canvas coordinate math and socket lifecycle from presentational views
+- **Automated Test Suite** - Native `node:test` suite verifying points, word hint progression, Levenshtein typo detection, stroke undo, and reconnection retention
+- **Security & Hygiene** - bcrypt password hashing, 8-player lobby cap, 24-hour TTL index in MongoDB, IP rate limiting (`rateLimiter.js`), and isolated spoiler chat for correct guessers
 
 ## How to Play
 
@@ -56,8 +58,9 @@
 ### Frontend
 
 - **React 18** with TypeScript
+- **Custom Hooks** (`useCanvasDrawing`, `useGameSocket`)
 - **Socket.IO Client** for real-time communication
-- **HTML5 Canvas** for drawing functionality
+- **HTML5 Canvas** for high-performance drawing & BFS flood fill
 - **Ant Design** for UI components
 - **Tailwind CSS** for styling
 
@@ -67,6 +70,8 @@
 - **Socket.IO** for WebSocket communication (with JWT handshake authentication)
 - **MongoDB** with Mongoose for room/participant persistence
 - **JWT & bcrypt** for token-based authentication and secure room password hashing
+- **node:test** for automated native unit and integration testing
+- **Sliding-window IP Rate Limiting** for brute-force and spam defense
 - **node-cron** for a self-ping keep-alive job (useful on free-tier hosts that spin down idle instances)
 
 ## Getting Started
@@ -111,7 +116,14 @@
    NODE_ENV=development
    ```
 
-5. **Run the application**
+5. **Run the Automated Tests**
+
+   ```bash
+   cd backend
+   npm test
+   ```
+
+6. **Run the application**
 
    **Backend** (Terminal 1):
 
@@ -127,7 +139,7 @@
    npm run dev
    ```
 
-6. **Open your browser**
+7. **Open your browser**
 
    Navigate to `http://localhost:5173`
 
@@ -138,16 +150,18 @@ sketchbattle/
 ├── backend/
 │   ├── controllers/     # Route controllers (auth, room create/join)
 │   ├── handlers/        # Socket.IO event handlers (game events, WebRTC signaling)
-│   ├── middleware/      # Socket.IO JWT auth middleware
+│   ├── middleware/      # Socket.IO JWT auth & sliding-window rate limiting
 │   ├── models/          # MongoDB models (Room, embedded participants)
 │   ├── routes/          # Express routes (/api/rooms, /api/logout)
-│   ├── services/        # Game logic (turn/round state machine) & in-memory game state manager
+│   ├── services/        # Game logic & in-memory game state manager
+│   ├── tests/           # Automated unit & integration tests (node:test)
 │   └── utils/           # Game config, word lists, scoring & hint helpers
 ├── frontend/
 │   ├── src/
 │   │   ├── components/  # Reusable UI components
+│   │   ├── hooks/       # Custom hooks (useCanvasDrawing, useGameSocket)
 │   │   ├── pages/       # Main page components
-│   │   └── utils/       # Frontend utilities
+│   │   └── utils/       # Canvas flood fill, Web Audio SFX, backend URL
 │   └── public/
 └── README.md
 ```

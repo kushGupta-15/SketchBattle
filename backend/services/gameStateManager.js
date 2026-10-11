@@ -165,14 +165,16 @@ class GameStateManager {
     if (gameRoom.players.size === 0) {
       console.log(`Room ${roomId} is empty, scheduling deletion in 30 seconds...`);
       
-      // Give some time for potential reconnections
-      setTimeout(() => {
+      const emptyTimer = setTimeout(() => {
         const currentGameRoom = this.getGameRoom(roomId);
         if (currentGameRoom && currentGameRoom.players.size === 0) {
           console.log(`Room ${roomId} still empty after 30 seconds, deleting...`);
           this.deleteGameRoom(roomId);
         }
       }, 30000); // 30 seconds
+      if (emptyTimer.unref) {
+        emptyTimer.unref();
+      }
     }
     
     return player;

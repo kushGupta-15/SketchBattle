@@ -12,22 +12,26 @@ Persistence is minimal by design. `roomModel.js` and MongoDB (via `dbconnection.
 
 Voice and video don't touch the backend's game logic at all. `VideoCall.tsx` and `voiceInput.tsx` on the frontend establish WebRTC peer connections directly between clients. The backend's only role is relaying the signaling messages (offer, answer, ICE candidates) needed to establish those connections, over the same socket layer as everything else.
 
-On the frontend, `pages/landing` and `pages/play` are the two real screens: pick or create a room, then play. Inside play, `components/play` holds the active-game UI, canvas, chat, drawing tools, player list, and the three modals that interrupt gameplay at specific moments (word selection, round results, game end).
+On the frontend, `pages/landing` and `pages/play` are the two real screens: pick or create a room, then play. The `play` screen is cleanly architected around two specialized custom hooks: `useCanvasDrawing.ts` (encapsulating canvas scaling, continuous stroke batching, flood fill, and undo stack) and `useGameSocket.ts` (encapsulating Socket.IO events, turn state machine, scoring, and audio cues). Inside play, `components/play` holds the active-game UI, canvas, chat, drawing tools, player list, and the three modals that interrupt gameplay at specific moments (word selection, round results, game end).
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#ffffff', 'primaryBorderColor': '#000000', 'primaryTextColor': '#000000', 'lineColor': '#000000', 'clusterBkg': '#ffffff', 'clusterBorder': '#000000', 'edgeLabelBackground':'#ffffff'}}}%%
 flowchart TB
     subgraph Client["Frontend (React + Vite, Vercel)"]
-        UI["pages/play, components/play\ncanvas, chat, drawing tools, player list"]
+        UI["pages/play\nuseCanvasDrawing, useGameSocket"]
+        Components["components/play\ncanvas, chat, drawing tools, player list"]
         WebRTC_Client["VideoCall.tsx / voiceInput.tsx"]
+        UI --> Components
     end
 
     subgraph Server["Backend (Node + Express, Render)"]
+        RateLimiter["rateLimiter.js\nsliding window IP limiter"]
         REST["REST routes\nroomRoutes.js, logoutRoutes.js"]
         SocketAuth["socketAuth.js\nJWT check"]
         SocketHandlers["socketHandlers.js\nsingle entry point for game events"]
         GameStateManager["gameStateManager.js\nin-memory room/game state"]
         GameLogic["gameLogic.js\nscoring, hints, turn rules"]
+        RateLimiter --> REST
     end
 
     DB[("MongoDB\nroomModel.js")]
@@ -47,7 +51,7 @@ flowchart TB
 
 ## Technology stack
 
-Frontend: React 18 with TypeScript, built with Vite, styled with Tailwind CSS, deployed to Vercel. Includes zero-dependency Web Audio API synthesizer for instant in-game sound effects (`soundEffects.ts`) and BFS canvas flood fill (`floodFill.ts`).
+Frontend: React 18 with TypeScript, built with Vite, styled with Tailwind CSS, deployed to Vercel. Includes custom hooks (`useCanvasDrawing`, `useGameSocket`), zero-dependency Web Audio API synthesizer for instant in-game sound effects (`soundEffects.ts`), and BFS canvas flood fill (`floodFill.ts`).
 
 Backend: Node.js with Express, deployed to Render.
 
@@ -55,7 +59,9 @@ Real-time transport: Socket.IO, used for all in-game events, drawing synchroniza
 
 Database: MongoDB, accessed through Mongoose, with 24-hour TTL index room expiration and customizable room game rules (rounds, turn duration, word difficulty, custom words).
 
-Authentication & Security: JWT checked on both REST requests and Socket.IO events, and bcrypt cryptographic password hashing for room protection.
+Authentication & Security: JWT checked on both REST requests and Socket.IO events, bcrypt cryptographic password hashing for room protection, sliding window IP rate limiting (`rateLimiter.js`), and strict input regex sanitization.
+
+Automated Testing: Native `node:test` and `node:assert` test suite covering game scoring, word hints, Levenshtein distance close guesses, stroke undo, and reconnection state persistence.
 
 Peer-to-peer media: WebRTC, for in-room voice and video.
 
@@ -74,6 +80,7 @@ SketchBattle/
 │   ├── handlers/
 │   │   └── socketHandlers.js      # single entry point for all socket events
 │   ├── middleware/
+│   │   ├── rateLimiter.js         # IP-based sliding window rate limiter
 │   │   └── socketAuth.js          # JWT check before game events are processed
 │   ├── models/
 │   │   └── roomModel.js
@@ -83,6 +90,10 @@ SketchBattle/
 │   ├── services/
 │   │   ├── gameLogic.js           # scoring, hints, turn rules
 │   │   └── gameStateManager.js    # in-memory room and game state
+│   ├── tests/
+│   │   ├── gameLogic.test.js      # points, hints, Levenshtein tests
+│   │   ├── gameStateManager.test.js # stroke undo and score state tests
+│   │   └── security.test.js       # rate limiting and bcrypt tests
 │   ├── utils/
 │   │   └── gameUtils.js
 │   ├── .env
@@ -107,12 +118,14 @@ SketchBattle/
     │   │       ├── VideoCall.tsx
     │   │       └── voiceInput.tsx
     │   ├── hooks/
+    │   │   ├── useCanvasDrawing.ts    # canvas scaling, strokes, flood fill, undo
+    │   │   ├── useGameSocket.ts       # socket lifecycle, turns, modals, audio cues
     │   │   └── useVoiceFeedback.ts
     │   ├── pages/
     │   │   ├── landing/
     │   │   │   └── page.tsx
     │   │   └── play/
-    │   │       └── page.tsx
+    │   │       └── page.tsx           # streamlined orchestration view
     │   ├── types/
     │   │   └── types.ts
     │   ├── utils/
