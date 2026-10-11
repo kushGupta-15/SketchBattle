@@ -183,7 +183,7 @@ class GameStateManager {
     gameRoom.players.delete(socketId);
     gameRoom.playerStates.delete(player.userId);
     gameRoom.scores.delete(player.userId);
-    gameRoom.guessedPlayers.delete(socketId);
+    gameRoom.guessedPlayers.delete(player.userId);
     
     // Remove from drawing order
     const orderIndex = gameRoom.drawingOrder.indexOf(player.userId);

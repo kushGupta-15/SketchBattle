@@ -24,7 +24,7 @@ Separate the real-time layer into distinct concerns, state management, game logi
 
 Make the project defensible as a portfolio piece. Every claim in the README or resume should be true of the code that's actually running.
 
-What this project isn't trying to do yet: enforce a max-player cap per room, activate all three word-difficulty tiers (only medium is live), or encrypt stored user data. Passwords are currently stored in plaintext. That's a documented limitation, not a hidden one.
+Security and state integrity: Room passwords are cryptographically hashed using bcrypt (with legacy plaintext migration), a max-player cap (8 players) is strictly enforced, and WebRTC signaling is validated to stay strictly within room boundaries. Room persistence in MongoDB is automatically managed with a 24-hour TTL index.
 
 ## Target users
 
@@ -56,6 +56,6 @@ Room lifecycle management. Rooms clean themselves up once the last participant l
 
 Voice and video. Peer-to-peer audio and video signaling layers on top of the game session through WebRTC.
 
-## Known limitations
+## Known limitations and roadmap
 
-This project keeps an explicit list of known bugs and gaps rather than overstating where it stands. Reconnection edge cases in guess tracking, an unenforced player cap, a single active difficulty tier, unverified WebRTC signaling, and a few state-consistency race conditions are tracked as a working backlog in the project's engineering notes, not treated as blockers to describing the product's intent here.
+Recent improvements resolved room password hashing (bcrypt), player cap enforcement, mid-turn canvas restoration (`canvasHistory`), spoiler chat isolation, and cross-room WebRTC signaling isolation. Active backlog includes difficulty tier UI selection during room creation, canvas flood fill (paint bucket), and custom word lists.

@@ -1,5 +1,5 @@
 import { GAME_CONFIG } from '../config/gameConfig.js';
-import { calculatePoints, checkWordMatch } from '../utils/gameUtils.js';
+import { calculatePoints, checkWordMatch, isCloseGuess } from '../utils/gameUtils.js';
 import gameStateManager from '../services/gameStateManager.js';
 import GameLogic from '../services/gameLogic.js';
 
@@ -10,19 +10,29 @@ export default function setupSocketHandlers(io) {
     const { decoded } = socket;
     console.log(`Socket connected: ${socket.id} for user: ${decoded.username}`);
 
-    // WebRTC Signaling Handlers
+    // Helper to ensure WebRTC signaling stays within the authorized room
+    const isTargetInSameRoom = (targetSocketId) => {
+      const room = gameStateManager.getGameRoom(decoded.roomId);
+      return Boolean(room && room.players.has(targetSocketId));
+    };
+
+    // WebRTC Signaling Handlers (Scoped to room members only)
     socket.on("webrtc-offer", ({ to, offer }) => {
-      socket.to(to).emit("webrtc-offer", { from: socket.id, offer });
+      if (isTargetInSameRoom(to)) {
+        socket.to(to).emit("webrtc-offer", { from: socket.id, offer });
+      }
     });
 
     socket.on("webrtc-answer", ({ to, answer }) => {
-      socket.to(to).emit("webrtc-answer", { from: socket.id, answer });
+      if (isTargetInSameRoom(to)) {
+        socket.to(to).emit("webrtc-answer", { from: socket.id, answer });
+      }
     });
 
     socket.on("webrtc-ice-candidate", ({ to, candidate }) => {
-      socket
-        .to(to)
-        .emit("webrtc-ice-candidate", { from: socket.id, candidate });
+      if (isTargetInSameRoom(to)) {
+        socket.to(to).emit("webrtc-ice-candidate", { from: socket.id, candidate });
+      }
     });
     
     // Join Room Handler
@@ -45,6 +55,9 @@ export default function setupSocketHandlers(io) {
       }
       
       const history = gameStateManager.getDrawHistory(roomId);
+      if (history && history.length > 0) {
+        socket.emit("canvasHistory", history);
+      }
       
       // Send current game state to the player
       socket.emit("gameState", {
@@ -238,28 +251,58 @@ export default function setupSocketHandlers(io) {
 
     // Chat Message Handler
     socket.on("chatMessage", (data) => {
+      if (!data || typeof data.message !== "string") return;
+      const trimmedMessage = data.message.trim();
+      if (!trimmedMessage || trimmedMessage.length > 100) return;
+
+      data.message = trimmedMessage;
+      data.username = decoded.username;
+      data.roomId = decoded.roomId;
+
       const gameRoom = gameStateManager.getGameRoom(data.roomId);
       
-      // Check if it's a correct guess during active drawing phase
+      // Check if it's during active drawing phase
       if (gameRoom && 
           gameRoom.gameState === 'playing' && 
           gameRoom.currentWord &&
           !gameRoom.isWordSelectionPhase) {
         
         const guessingPlayer = gameStateManager.getPlayerBySocketId(data.roomId, socket.id);
-        const drawerUserId = gameRoom.currentDrawer; // This is a userId, not socketId
+        const drawerUserId = gameRoom.currentDrawer;
         
-        // Don't check guesses from the drawer or players who already guessed
-        if (guessingPlayer && 
-            guessingPlayer.userId !== drawerUserId &&
-            !gameRoom.guessedPlayers.has(socket.id)) {
-          
-          console.log(`Checking guess: "${data.message}" against word: "${gameRoom.currentWord}"`);
-          console.log(`Guesser: ${guessingPlayer.username} (${guessingPlayer.userId}), Drawer: ${drawerUserId}`);
-          
-          if (checkWordMatch(data.message, gameRoom.currentWord)) {
-            // Correct guess!
-            gameRoom.guessedPlayers.add(socket.id);
+        // Prevent drawer from leaking the secret word in chat
+        if (guessingPlayer && guessingPlayer.userId === drawerUserId) {
+          if (trimmedMessage.toLowerCase().includes(gameRoom.currentWord.toLowerCase())) {
+            socket.emit("chatMessage", {
+              username: "System",
+              message: "Warning: You cannot reveal the secret word in chat!",
+              roomId: data.roomId
+            });
+            return;
+          }
+        }
+
+        // Prevent players who already guessed from spoiling for others
+        if (guessingPlayer && gameRoom.guessedPlayers.has(guessingPlayer.userId)) {
+          const recipientUserIds = new Set(gameRoom.guessedPlayers);
+          recipientUserIds.add(gameRoom.currentDrawer);
+
+          for (const [sId, pState] of gameRoom.players.entries()) {
+            if (recipientUserIds.has(pState.userId)) {
+              io.to(sId).emit("chatMessage", {
+                ...data,
+                isGuessedOnly: true
+              });
+            }
+          }
+          return; // Do not broadcast to players still guessing
+        }
+
+        // Non-drawer player who hasn't guessed yet
+        if (guessingPlayer && guessingPlayer.userId !== drawerUserId) {
+          if (checkWordMatch(trimmedMessage, gameRoom.currentWord)) {
+            // Correct guess! Record userId to prevent double-scoring across reconnections
+            gameRoom.guessedPlayers.add(guessingPlayer.userId);
             const guessOrder = gameRoom.guessedPlayers.size;
             const connectedPlayersCount = gameStateManager.getPlayerCount(data.roomId);
             const points = calculatePoints(guessOrder, connectedPlayersCount);
@@ -271,14 +314,10 @@ export default function setupSocketHandlers(io) {
             const newScore = currentScore + points;
             gameRoom.scores.set(guessingPlayer.userId, newScore);
             
-            // ALSO update the score in the playerState object for consistency
             const playerState = gameStateManager.getPlayerByUserId(data.roomId, guessingPlayer.userId);
             if (playerState) {
               playerState.score = newScore;
             }
-            
-            console.log(`Updated score for ${guessingPlayer.username}: ${currentScore} + ${points} = ${newScore}`);
-            console.log(`Scores Map:`, Object.fromEntries(gameRoom.scores));
             
             // Notify about correct guess
             io.to(data.roomId).emit("correctGuess", {
@@ -288,7 +327,7 @@ export default function setupSocketHandlers(io) {
               totalGuessed: gameRoom.guessedPlayers.size
             });
             
-            // Update scores - make sure to send the scores Map
+            // Update scores
             io.to(data.roomId).emit("scoreUpdate", {
               scores: Object.fromEntries(gameRoom.scores)
             });
@@ -299,18 +338,14 @@ export default function setupSocketHandlers(io) {
               gameLogic.endTurn(data.roomId, 'allGuessed');
             }
             
-            return; // Don't send as regular chat message
-          } else {
-            console.log(`Incorrect guess: "${data.message}" (expected: "${gameRoom.currentWord}")`);
-          }
-        } else {
-          // Debug logging
-          if (!guessingPlayer) {
-            console.log(`Player not found for socket ${socket.id}`);
-          } else if (guessingPlayer.userId === drawerUserId) {
-            console.log(`Drawer ${guessingPlayer.username} cannot guess (userId: ${guessingPlayer.userId})`);
-          } else if (gameRoom.guessedPlayers.has(socket.id)) {
-            console.log(`Player ${guessingPlayer.username} already guessed correctly`);
+            return; // Don't send guess as regular chat message
+          } else if (isCloseGuess(trimmedMessage, gameRoom.currentWord)) {
+            // Private alert to the guesser that they are very close!
+            socket.emit("chatMessage", {
+              username: "System",
+              message: `"${trimmedMessage}" is very close!`,
+              roomId: data.roomId
+            });
           }
         }
       }
@@ -396,15 +431,8 @@ export default function setupSocketHandlers(io) {
         });
         
         if (disconnectedPlayer) {
-          io.to(roomId).emit("leaveMessage", {
-            message: `${disconnectedPlayer.username} has disconnected.`,
-          });
-        }
-
-        if (disconnectedPlayer) {
-          // Add this line to notify clients a user has left the video call
+          // Notify clients a user has left the video call and room
           io.to(roomId).emit("user-left", socket.id);
-
           io.to(roomId).emit("leaveMessage", {
             message: `${disconnectedPlayer.username} has disconnected.`,
           });

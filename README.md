@@ -69,10 +69,8 @@
 - **Node.js** with Express
 - **Socket.IO** for WebSocket communication (with JWT handshake authentication)
 - **MongoDB** with Mongoose for room/participant persistence
-- **JWT** for authentication (REST endpoints + Socket.IO connections)
+- **JWT & bcrypt** for token-based authentication and secure room password hashing
 - **node-cron** for a self-ping keep-alive job (useful on free-tier hosts that spin down idle instances)
-
-> **Note:** Password hashing (bcrypt) is planned but not yet implemented — room passwords are currently stored and compared as plain text. This is a known issue being addressed.
 
 ## Getting Started
 
@@ -192,15 +190,19 @@ Word lists (easy/medium/hard difficulty tiers) live alongside this in the same f
 
 > **Note:** Word-selection time (15 seconds) is currently hardcoded in `services/gameLogic.js` rather than pulled from `GAME_CONFIG` — this is planned to be extracted into a proper config value.
 >
-> **Note:** `MAX_PLAYERS` is defined but not yet enforced at the join, state-management, or database layer — a room can currently accept more than 8 participants. This is a known gap being addressed.
+> **Note:** `MAX_PLAYERS` (8 players max) is enforced on room creation and join.
 >
-> **Note:** Only the `medium` word list is currently used during gameplay — difficulty selection isn't wired up yet, so `easy` and `hard` are defined in config but unused by the game logic.
+> **Note:** Word lists for easy, medium, and hard tiers are populated and shuffled without in-place mutation.
 
-### Known Issues
+### Resolved Issues & Security Hardening
 
-- **Guess-tracking on reconnect**: a player's "already guessed correctly" status is tracked per socket connection rather than per user. If a player reconnects mid-turn (e.g. after a dropped connection), they can guess correctly a second time in that same turn. Score updates are otherwise unaffected.
-- **WebRTC signaling scope**: the offer/answer/ICE-candidate relay forwards messages by socket ID without verifying that the sender and recipient are in the same room. Low practical impact (the browser's own SDP/ICE handshake still has to succeed), but it's not currently authorized server-side.
-- **Room cleanup on explicit leave**: rooms are cleaned up from in-memory game state after a disconnect-driven empty room, but not after all players use the explicit "leave" action — this is being addressed to avoid unnecessary memory growth on long-running server instances.
+- **Cryptographic Passwords**: Room passwords are encrypted with `bcrypt` (10 salt rounds) with automatic legacy migration.
+- **Canvas History Sync**: Connecting or reconnecting mid-round automatically receives and renders existing canvas drawing history via `canvasHistory`.
+- **Guess-tracking Integrity**: Guess tracking records persistent `userId` rather than transient `socketId`, preventing double-scoring upon reconnection.
+- **Spoiler Chat Isolation**: Players who have already guessed correctly have their subsequent messages restricted to fellow guessers and the drawer, preventing answer leaks.
+- **Close Guess Alerts**: Near-miss guesses (edit distance of 1-2) trigger private feedback alerts to the guesser.
+- **WebRTC Boundary Authorization**: Signaling (offer, answer, ICE candidates) is strictly constrained to peers within the authenticated room.
+- **Database Lifecycle**: MongoDB rooms utilize a 24-hour TTL index to prevent orphaned records.
 
 ## Deployment
 

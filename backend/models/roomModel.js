@@ -16,6 +16,9 @@ const roomSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Auto-expire abandoned rooms after 24 hours (86400 seconds)
+roomSchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
+
 // Create and export the Room model
 const Room = mongoose.model("Room", roomSchema);
 export default Room;

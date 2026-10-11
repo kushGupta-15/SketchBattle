@@ -47,18 +47,39 @@ const ChatSection = ({
             No messages yet. Start the conversation.
           </div>
         ) : (
-          messages.map((msg: any, index: any) => (
-            <div key={index} className="text-sm break-words">
-              <span
-                className={`font-semibold ${
-                  msg.username === "System" ? "text-green-600" : "text-blue-600"
+          messages.map((msg: any, index: any) => {
+            const isSystem = msg.username === "System";
+            const isClose = isSystem && typeof msg.message === "string" && msg.message.includes("very close");
+
+            return (
+              <div 
+                key={index} 
+                className={`text-sm break-words ${
+                  isClose ? "bg-amber-50 text-amber-800 p-1 rounded-lg border border-amber-200" : ""
                 }`}
               >
-                {msg.username === "System" ? "System" : msg.username}
-                :</span>
-              <span className="ml-2 text-gray-700">{msg.message}</span>
-            </div>
-          ))
+                {msg.isGuessedOnly && (
+                  <span className="text-xs text-emerald-600 font-semibold mr-1.5 bg-emerald-50 px-1.5 py-0.5 rounded">
+                    [Guessed]
+                  </span>
+                )}
+                <span
+                  className={`font-semibold ${
+                    isClose
+                      ? "text-amber-700"
+                      : isSystem
+                      ? "text-green-600"
+                      : "text-blue-600"
+                  }`}
+                >
+                  {msg.username}:
+                </span>
+                <span className={`ml-2 ${isClose ? "text-amber-900 font-medium" : "text-gray-700"}`}>
+                  {msg.message}
+                </span>
+              </div>
+            );
+          })
         )}
       </div>
 

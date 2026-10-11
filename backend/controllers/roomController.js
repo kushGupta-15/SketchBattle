@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 import Room from "../models/roomModel.js";
+import { GAME_CONFIG } from "../config/gameConfig.js";
 
 // Create a room
 export const createRoom = async (req, res) => {
@@ -10,15 +12,33 @@ export const createRoom = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const roomExists = await Room.findOne({ roomId });
+    const cleanRoomId = roomId.trim();
+    const cleanUsername = username.trim();
+
+    if (cleanUsername.toLowerCase() === "system") {
+      return res.status(400).json({ message: "Username 'system' is reserved" });
+    }
+
+    if (cleanUsername.length > 20) {
+      return res.status(400).json({ message: "Username must be 20 characters or fewer" });
+    }
+
+    if (cleanRoomId.length > 30) {
+      return res.status(400).json({ message: "Room ID must be 30 characters or fewer" });
+    }
+
+    const roomExists = await Room.findOne({ roomId: cleanRoomId });
     if (roomExists) {
       return res.status(400).json({ message: "Room already exists" });
     }
 
+    // Hash room password with bcrypt
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const newRoom = new Room({
-      roomId,
-      password,
-      participants: [{ username, score: 0, admin: true }],
+      roomId: cleanRoomId,
+      password: hashedPassword,
+      participants: [{ username: cleanUsername, score: 0, admin: true }],
     });
 
     await newRoom.save();
@@ -26,9 +46,9 @@ export const createRoom = async (req, res) => {
     // Enhanced JWT token with userId
     const token = jwt.sign(
       {
-        roomId,
-        username,
-        userId: `${roomId}_${username}`, // Unique identifier
+        roomId: cleanRoomId,
+        username: cleanUsername,
+        userId: `${cleanRoomId}_${cleanUsername}`, // Unique identifier
         joinedAt: Date.now(),
       },
       process.env.JWT_SECRET,
@@ -49,7 +69,7 @@ export const createRoom = async (req, res) => {
   }
 };
 
-// To be fixed - Passwords are not hashed
+// Join a room (with bcrypt verification, reconnection support & player cap)
 export const joinRoom = async (req, res) => {
   try {
     const { roomId, username, password } = req.body;
@@ -58,33 +78,57 @@ export const joinRoom = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const room = await Room.findOne({ roomId });
+    const cleanRoomId = roomId.trim();
+    const cleanUsername = username.trim();
+
+    if (cleanUsername.toLowerCase() === "system") {
+      return res.status(400).json({ message: "Username 'system' is reserved" });
+    }
+
+    const room = await Room.findOne({ roomId: cleanRoomId });
     if (!room) {
       return res.status(404).json({ message: "Room not found" });
     }
 
-    if (room.password !== password) {
+    // Verify password (support both bcrypt hashes and legacy plaintext fallback)
+    let isPasswordValid = false;
+    if (room.password.startsWith("$2a$") || room.password.startsWith("$2b$")) {
+      isPasswordValid = await bcrypt.compare(password, room.password);
+    } else {
+      isPasswordValid = room.password === password;
+      if (isPasswordValid) {
+        // Transparently upgrade legacy plaintext password to bcrypt hash
+        room.password = await bcrypt.hash(password, 10);
+        await room.save();
+      }
+    }
+
+    if (!isPasswordValid) {
       return res.status(401).json({ message: "Incorrect password" });
     }
 
-    // Check if user already exists in room
+    // Check if user already exists in room (reconnection flow)
     const existingParticipant = room.participants.find(
-      (p) => p.username === username
+      (p) => p.username.toLowerCase() === cleanUsername.toLowerCase()
     );
 
-    if (existingParticipant || username.toLowerCase() === "system") {
-      return res.status(400).json({ message: "Username already taken. Please try a different username." });
-    }
+    if (!existingParticipant) {
+      // Enforce MAX_PLAYERS limit for new players
+      const maxPlayers = GAME_CONFIG.MAX_PLAYERS || 8;
+      if (room.participants.length >= maxPlayers) {
+        return res.status(400).json({ message: `Room is full (max ${maxPlayers} players)` });
+      }
 
-    room.participants.push({ username, score: 0, admin: false });
-    await room.save();
+      room.participants.push({ username: cleanUsername, score: 0, admin: false });
+      await room.save();
+    }
 
     // Enhanced JWT token
     const token = jwt.sign(
       {
-        roomId,
-        username,
-        userId: `${roomId}_${username}`,
+        roomId: cleanRoomId,
+        username: cleanUsername,
+        userId: `${cleanRoomId}_${cleanUsername}`,
         joinedAt: Date.now(),
       },
       process.env.JWT_SECRET,
@@ -95,7 +139,7 @@ export const joinRoom = async (req, res) => {
     delete roomData.password;
 
     res.status(200).json({
-      message: "Joined room successfully",
+      message: existingParticipant ? "Reconnected to room successfully" : "Joined room successfully",
       room: roomData,
       token,
     });

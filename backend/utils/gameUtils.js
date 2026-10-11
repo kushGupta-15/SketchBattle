@@ -1,10 +1,14 @@
 import { wordLists, GAME_CONFIG } from '../config/gameConfig.js';
 
-// Get random words for choices
+// Get random words for choices (non-mutating Fisher-Yates shuffle)
 export function getRandomWords(difficulty = 'medium', count = 3) {
-  const words = wordLists[difficulty];
-  const shuffled = words.sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
+  const words = wordLists[difficulty] || wordLists.medium;
+  const copy = [...words];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, count);
 }
 
 // Calculate points based on guess timing
@@ -24,6 +28,35 @@ export function checkWordMatch(guess, word) {
   
   // Only exact match - no partial matching
   return normalizedGuess === normalizedWord;
+}
+
+// Check if guess is close (Levenshtein distance <= 1 or 2 for longer words)
+export function isCloseGuess(guess, word) {
+  if (!guess || !word) return false;
+  const g = guess.toLowerCase().trim();
+  const w = word.toLowerCase().trim();
+  if (g === w) return false;
+  if (Math.abs(g.length - w.length) > 2) return false;
+
+  const dp = Array.from({ length: g.length + 1 }, () => 
+    new Array(w.length + 1).fill(0)
+  );
+
+  for (let i = 0; i <= g.length; i++) dp[i][0] = i;
+  for (let j = 0; j <= w.length; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= g.length; i++) {
+    for (let j = 1; j <= w.length; j++) {
+      if (g[i - 1] === w[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+  }
+
+  const distance = dp[g.length][w.length];
+  return distance === 1 || (w.length >= 6 && distance === 2);
 }
 
 // Generate progressive word hint with FIXED positions (like Scribbl.io)

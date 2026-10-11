@@ -53,9 +53,9 @@ Backend: Node.js with Express, deployed to Render.
 
 Real-time transport: Socket.IO, used for all in-game events and WebRTC signaling.
 
-Database: MongoDB, accessed through Mongoose.
+Database: MongoDB, accessed through Mongoose, with 24-hour TTL index room expiration.
 
-Authentication: JWT, checked on both REST requests and Socket.IO events.
+Authentication & Security: JWT checked on both REST requests and Socket.IO events, and bcrypt cryptographic password hashing for room protection.
 
 Peer-to-peer media: WebRTC, for in-room voice and video.
 
@@ -87,6 +87,7 @@ SketchBattle/
 │   │   └── gameUtils.js
 │   ├── .env
 │   ├── index.js                   # server entry point
+│   ├── polyfill.js                # Node 26 Buffer compatibility
 │   └── package.json
 │
 └── frontend/
@@ -99,7 +100,6 @@ SketchBattle/
     │   │       │   ├── gameEndModal.tsx
     │   │       │   ├── roundResultModal.tsx
     │   │       │   └── wordSelectModal.tsx
-    │   │       ├── canvas.tsx
     │   │       ├── chatSection.tsx
     │   │       ├── drawingtools.tsx
     │   │       ├── navbar.tsx

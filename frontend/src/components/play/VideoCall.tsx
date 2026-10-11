@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card, Button, message, Tooltip } from "antd";
 import { LuVideo, LuVideoOff, LuMic, LuMicOff } from "react-icons/lu";
 import { Socket } from "socket.io-client";
-import { Player } from "../../types/types"; // Import the unified Player type
+import { Player } from "../../types/types";
 
 // Define props for the VideoStream sub-component
 interface VideoStreamProps {
@@ -44,7 +44,6 @@ interface VideoCallProps {
 }
 
 const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
-  console.log("Rendering VideoCall component");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<
     Map<string, { stream: MediaStream; username: string }>
@@ -52,26 +51,40 @@ const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const pendingCandidates = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+  const localStreamRef = useRef<MediaStream | null>(null);
+  localStreamRef.current = localStream;
 
-  const getPeerConnection = (
-    sid: string,
-    username: string
-  ): RTCPeerConnection => {
+  const drainCandidates = async (sid: string, pc: RTCPeerConnection) => {
+    const queue = pendingCandidates.current.get(sid) || [];
+    for (const cand of queue) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(cand));
+      } catch (err) {
+        console.warn("Error adding queued ICE candidate:", err);
+      }
+    }
+    pendingCandidates.current.delete(sid);
+  };
+
+  const getPeerConnection = (sid: string, username: string): RTCPeerConnection => {
     if (!peerConnections.current.has(sid)) {
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
 
-      if (localStream) {
-        localStream
+      if (localStreamRef.current) {
+        localStreamRef.current
           .getTracks()
-          .forEach((track) => pc.addTrack(track, localStream));
+          .forEach((track) => pc.addTrack(track, localStreamRef.current!));
       }
 
       pc.ontrack = (event: RTCTrackEvent) => {
-        setRemoteStreams((prev) =>
-          new Map(prev).set(sid, { stream: event.streams[0], username })
-        );
+        if (event.streams && event.streams[0]) {
+          setRemoteStreams((prev) =>
+            new Map(prev).set(sid, { stream: event.streams[0], username })
+          );
+        }
       };
 
       pc.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
@@ -97,11 +110,25 @@ const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
       setLocalStream(stream);
       setIsVideoEnabled(true);
       setIsAudioEnabled(true);
+
+      // Add local tracks to existing peer connections and renegotiate
+      peerConnections.current.forEach((pc, sid) => {
+        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+        pc.createOffer()
+          .then((offer) => pc.setLocalDescription(offer))
+          .then(() => {
+            if (pc.localDescription && socket) {
+              socket.emit("webrtc-offer", {
+                to: sid,
+                offer: pc.localDescription,
+              });
+            }
+          })
+          .catch((err) => console.error("Error creating renegotiation offer:", err));
+      });
     } catch (error) {
       console.error("Error accessing media devices.", error);
-      message.error(
-        "Could not access camera and microphone. Please check permissions."
-      );
+      message.error("Could not access camera and microphone. Please check permissions.");
     }
   };
 
@@ -109,10 +136,7 @@ const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
     }
-    peerConnections.current.forEach((pc) => pc.close());
-    peerConnections.current.clear();
     setLocalStream(null);
-    setRemoteStreams(new Map());
     setIsVideoEnabled(false);
     setIsAudioEnabled(false);
   };
@@ -128,36 +152,14 @@ const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
   const toggleAudio = () => {
     if (localStream) {
       const newAudioState = !isAudioEnabled;
-      localStream
-        .getAudioTracks()
-        .forEach((track) => (track.enabled = newAudioState));
+      localStream.getAudioTracks().forEach((track) => (track.enabled = newAudioState));
       setIsAudioEnabled(newAudioState);
     }
   };
 
+  // Always listen for incoming signaling so spectators/non-streamers can receive remote feeds
   useEffect(() => {
-    if (!socket || !isVideoEnabled || !localStream) return;
-
-    players.forEach((player: Player) => {
-      if (
-        player.socketId !== selfId &&
-        !peerConnections.current.has(player.socketId)
-      ) {
-        const pc = getPeerConnection(player.socketId, player.username);
-        pc.createOffer()
-          .then((offer: RTCSessionDescriptionInit) =>
-            pc.setLocalDescription(offer)
-          )
-          .then(() => {
-            if (pc.localDescription) {
-              socket.emit("webrtc-offer", {
-                to: player.socketId,
-                offer: pc.localDescription,
-              });
-            }
-          });
-      }
-    });
+    if (!socket) return;
 
     const handleOffer = async ({
       from,
@@ -167,16 +169,21 @@ const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
       offer: RTCSessionDescriptionInit;
     }) => {
       const player = players.find((p: Player) => p.socketId === from);
-      if (player) {
-        const pc = getPeerConnection(from, player.username);
+      const username = player ? player.username : "Player";
+      const pc = getPeerConnection(from, username);
+
+      try {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        await drainCandidates(from, pc);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit("webrtc-answer", { to: from, answer });
+      } catch (err) {
+        console.error("Error handling WebRTC offer:", err);
       }
     };
 
-    const handleAnswer = ({
+    const handleAnswer = async ({
       from,
       answer,
     }: {
@@ -185,11 +192,16 @@ const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
     }) => {
       const pc = peerConnections.current.get(from);
       if (pc) {
-        pc.setRemoteDescription(new RTCSessionDescription(answer));
+        try {
+          await pc.setRemoteDescription(new RTCSessionDescription(answer));
+          await drainCandidates(from, pc);
+        } catch (err) {
+          console.error("Error handling WebRTC answer:", err);
+        }
       }
     };
 
-    const handleIceCandidate = ({
+    const handleIceCandidate = async ({
       from,
       candidate,
     }: {
@@ -197,8 +209,17 @@ const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
       candidate: RTCIceCandidateInit;
     }) => {
       const pc = peerConnections.current.get(from);
-      if (pc) {
-        pc.addIceCandidate(new RTCIceCandidate(candidate));
+      if (pc && pc.remoteDescription) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+          console.error("Error adding ICE candidate:", err);
+        }
+      } else {
+        if (!pendingCandidates.current.has(from)) {
+          pendingCandidates.current.set(from, []);
+        }
+        pendingCandidates.current.get(from)!.push(candidate);
       }
     };
 
@@ -207,6 +228,7 @@ const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
         peerConnections.current.get(sid)?.close();
         peerConnections.current.delete(sid);
       }
+      pendingCandidates.current.delete(sid);
       setRemoteStreams((prev) => {
         const newStreams = new Map(prev);
         newStreams.delete(sid);
@@ -225,7 +247,33 @@ const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
       socket.off("webrtc-ice-candidate", handleIceCandidate);
       socket.off("user-left", handleUserLeft);
     };
-  }, [socket, isVideoEnabled, players, selfId, localStream]);
+  }, [socket, players]);
+
+  // When local video is enabled, initiate connection to peers that don't have one
+  useEffect(() => {
+    if (!socket || !isVideoEnabled || !localStream) return;
+
+    players.forEach((player: Player) => {
+      if (
+        player.socketId &&
+        player.socketId !== selfId &&
+        !peerConnections.current.has(player.socketId)
+      ) {
+        const pc = getPeerConnection(player.socketId, player.username);
+        pc.createOffer()
+          .then((offer) => pc.setLocalDescription(offer))
+          .then(() => {
+            if (pc.localDescription) {
+              socket.emit("webrtc-offer", {
+                to: player.socketId,
+                offer: pc.localDescription,
+              });
+            }
+          })
+          .catch((err) => console.error("Error creating offer:", err));
+      }
+    });
+  }, [socket, isVideoEnabled, localStream, players, selfId]);
 
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
@@ -272,7 +320,7 @@ const VideoCall = ({ socket, players, selfId }: VideoCallProps) => {
           )
         )}
       </div>
-      {!isVideoEnabled && (
+      {!isVideoEnabled && remoteStreams.size === 0 && (
         <div className="w-full aspect-video bg-gray-200 rounded-lg flex items-center justify-center">
           <p className="text-gray-500">Video is off</p>
         </div>

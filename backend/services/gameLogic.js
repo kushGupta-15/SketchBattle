@@ -397,8 +397,8 @@ class GameLogic {
       drawerPointsAwarded, // Include drawer points/penalty info
       scores: Object.fromEntries(gameRoom.scores),
       guessedPlayers: Array.from(gameRoom.guessedPlayers)
-        .map((socketId) => {
-          const player = gameStateManager.getPlayerBySocketId(roomId, socketId);
+        .map((userId) => {
+          const player = gameStateManager.getPlayerByUserId(roomId, userId);
           return player?.username;
         })
         .filter(Boolean),
