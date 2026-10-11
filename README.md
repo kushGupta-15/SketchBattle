@@ -82,20 +82,21 @@
 ## System Architecture
 
 ```mermaid
-graph TD
-  subgraph Client ["Client Layer (React 18 + TypeScript)"]
+flowchart TD
+  subgraph ClientTier ["Client Tier (React 18 + TypeScript)"]
     UI["UI & Responsive Layout (Mobile / Desktop)"]
     Hooks["Custom Hooks (useGameSocket, useCanvasDrawing)"]
-    Canvas["HTML5 Canvas Engine (Drawing, BFS Flood Fill, Undo Stack)"]
+    Canvas["HTML5 Canvas (BFS Flood Fill, Undo Stack)"]
     SFX["Web Audio API Synthesizer (Zero-Dependency SFX)"]
-    WebRTC["WebRTC Peer-to-Peer Video Mesh"]
+    Media["WebRTC Video & Audio Mesh"]
     UI --> Hooks
     Hooks --> Canvas
     Hooks --> SFX
+    Hooks --> Media
   end
 
-  subgraph Server ["Server Layer (Node.js + Express)"]
-    SocketServer["Socket.IO Engine (JWT Handshake Authentication)"]
+  subgraph ServerTier ["Server Tier (Node.js + Express)"]
+    SocketServer["Socket.IO Server (JWT Handshake Auth)"]
     GSM["GameStateManager (Turn Timers, Canvas Sync, Disconnect Recovery)"]
     GameLogic["GameLogic (Levenshtein Near-Miss, Tiered Scoring)"]
     REST["Express REST API (bcrypt Auth, Sliding-Window Rate Limiter)"]
@@ -103,15 +104,14 @@ graph TD
     GSM --> GameLogic
   end
 
-  subgraph Storage ["Database Layer (MongoDB Atlas)"]
+  subgraph DatabaseTier ["Database Tier (MongoDB Atlas)"]
     DB[("Mongoose Rooms (24h Automatic TTL Cleanup)")]
   end
 
-  Hooks <== Real-time Socket Events ==> SocketServer
-  UI <== HTTPS / REST ==> REST
+  Hooks <-->|"Real-Time Socket Events"| SocketServer
+  UI -->|"HTTPS REST Calls"| REST
   REST --> DB
   SocketServer --> DB
-  WebRTC <.. P2P Media Streams ..> WebRTC
 ```
 
 ## Getting Started
