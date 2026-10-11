@@ -219,16 +219,23 @@ Word lists (easy/medium/hard difficulty tiers) live alongside this in the same f
 
 ### Frontend (Vercel)
 
-1. Connect your GitHub repo to Vercel
+1. Connect your GitHub repository to Vercel
 2. Set build command: `npm run build`
-3. Set environment variables in Vercel dashboard
+3. Set environment variable in Vercel project settings:
+   - `VITE_APP_BACKEND_URL`: `https://sketchbattle.onrender.com` (your backend URL without trailing slash)
 
-### Backend (Render/Railway)
+### Backend (Render / Railway)
 
-1. Connect your GitHub repo
-2. Set start command: `npm start`
-3. Add environment variables in dashboard
-4. A built-in self-ping cron job (every 10 minutes) helps keep free-tier instances warm and avoid cold-start delays
+1. Connect your GitHub repository to Render
+2. Set build command: `npm install`
+3. Set start command: `npm start`
+4. Add environment variables in the Render dashboard:
+   - `MONGODB_URI`: your MongoDB Atlas connection string
+   - `JWT_SECRET`: a secure random secret key
+   - `FRONTEND_URL`: `https://sketch-battle-rho.vercel.app` (optional comma-separated list of origins)
+5. **CORS & Preview Deployments**: The backend dynamically accepts production Vercel domains, dynamic branch/preview deployments (`*.vercel.app`), local development ports, and requests without origins (curl/cron).
+6. **Endpoints & Healthcheck**: Root (`/`) returns server status JSON (`200 OK`) to avoid default `Cannot GET /` errors; `/health` returns `{ status: "ok" }`.
+7. **Keep-Warm Cron Job**: A built-in self-ping cron job (every 10 minutes) pings `/health` to keep free-tier instances warm.
 
 ## Contributing
 

@@ -11,10 +11,12 @@ import logoutRoutes from "./routes/logoutRoutes.js";
 import { socketAuthMiddleware } from "./middleware/socketAuth.js";
 import setupSocketHandlers from "./handlers/socketHandlers.js";
 
+import { corsOptions } from "./config/corsConfig.js";
+
 dotenv.config();
 
 // Validate required environment variables
-const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET', 'FRONTEND_URL'];
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
 requiredEnvVars.forEach(varName => {
   if (!process.env[varName]) {
     console.warn(`Warning: ${varName} is not set in .env`);
@@ -23,11 +25,7 @@ requiredEnvVars.forEach(varName => {
 
 const app = express();
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL,
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
@@ -36,11 +34,7 @@ connectDB();
 
 // Configure Socket.IO with CORS
 const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL,
-    methods: ["GET", "POST"],
-    credentials: true
-  },
+  cors: corsOptions,
 });
 
 // Socket.IO Authentication Middleware
@@ -49,7 +43,16 @@ io.use(socketAuthMiddleware);
 // Setup Socket Handlers
 setupSocketHandlers(io);
 
-// ✅ Health check route
+// ✅ Root & Health check routes
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "SketchBattle Backend API",
+    message: "Server is running smoothly",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });

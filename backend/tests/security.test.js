@@ -2,6 +2,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import bcrypt from "bcrypt";
 import { createRateLimiter } from "../middleware/rateLimiter.js";
+import { isOriginAllowed, corsOptions } from "../config/corsConfig.js";
 
 describe("Security & Defense Hardening", () => {
   test("bcrypt correctly hashes and verifies passwords", async () => {
@@ -82,5 +83,54 @@ describe("Security & Defense Hardening", () => {
     assert.strictEqual(nextCalledCount, 3);
     assert.strictEqual(statusCode, 429);
     assert.strictEqual(responseBody?.message, "Rate limit exceeded");
+  });
+
+  test("CORS origin validator allows Vercel previews, production, localhost, and non-browser clients", () => {
+    // 1. Missing origin (curl, cron jobs, server-to-server)
+    assert.strictEqual(isOriginAllowed(undefined), true);
+    assert.strictEqual(isOriginAllowed(null), true);
+    assert.strictEqual(isOriginAllowed(""), true);
+
+    // 2. Production Vercel domain
+    assert.strictEqual(isOriginAllowed("https://sketch-battle-rho.vercel.app"), true);
+
+    // 3. Dynamic Vercel branch and preview deployments
+    assert.strictEqual(
+      isOriginAllowed("https://sketch-battle-a700e3bez-kush-guptas-projects-68beb030.vercel.app"),
+      true
+    );
+    assert.strictEqual(isOriginAllowed("https://sketch-battle-preview.vercel.app"), true);
+
+    // 4. Local development URLs
+    assert.strictEqual(isOriginAllowed("http://localhost:5173"), true);
+    assert.strictEqual(isOriginAllowed("http://localhost:3000"), true);
+    assert.strictEqual(isOriginAllowed("http://127.0.0.1:8080"), true);
+
+    // 5. Custom allowed origins or comma-separated env values
+    assert.strictEqual(
+      isOriginAllowed("https://mycustomdomain.com", ["https://mycustomdomain.com, https://other.com"]),
+      true
+    );
+    assert.strictEqual(
+      isOriginAllowed("https://other.com", ["https://mycustomdomain.com, https://other.com"]),
+      true
+    );
+
+    // 6. Block untrusted malicious origins
+    assert.strictEqual(isOriginAllowed("https://malicious-website.com"), false);
+    assert.strictEqual(isOriginAllowed("https://attacker-sketch-battle.com"), false);
+
+    // 7. Verify corsOptions origin callback contract
+    let allowedResult = null;
+    corsOptions.origin("https://sketch-battle-a700e3bez-kush-guptas-projects-68beb030.vercel.app", (err, allow) => {
+      allowedResult = allow;
+    });
+    assert.strictEqual(allowedResult, true);
+
+    let blockedResult = null;
+    corsOptions.origin("https://evil.com", (err, allow) => {
+      blockedResult = allow;
+    });
+    assert.strictEqual(blockedResult, false);
   });
 });
