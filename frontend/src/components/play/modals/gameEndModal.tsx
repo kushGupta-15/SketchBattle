@@ -1,75 +1,120 @@
 import { Modal, Button, notification } from "antd";
+import { LuTrophy, LuSparkles } from "react-icons/lu";
+import { getAvatarColor, getInitials } from "../../../utils/avatarUtils";
+
+interface GameEndModalProps {
+  showGameEndModal: boolean;
+  setShowGameEndModal: (open: boolean) => void;
+  gameResults: any;
+}
 
 const GameEndModal = ({
   showGameEndModal,
   setShowGameEndModal,
   gameResults,
-}: any) => {
+}: GameEndModalProps) => {
   if (!gameResults) return null;
+
+  const rankings = gameResults.rankings || [];
+  const winner = rankings[0];
 
   return (
     <Modal
-      title="Game Finished"
+      title={null}
       open={showGameEndModal}
       footer={
         <Button
           type="primary"
           onClick={() => {
             notification.success({
-              message: "Game Restarted",
-              description:
-                "The game will restart shortly. Keep playing!",
-              duration: 10,
+              message: "Game Restarted! 🎉",
+              description: "The room is ready for another round of SketchBattle!",
+              duration: 5,
             });
             setShowGameEndModal(false);
           }}
           size="large"
+          className="w-full !h-12 !rounded-2xl !bg-gradient-to-r !from-indigo-600 via-purple-600 to-pink-600 hover:!from-indigo-500 hover:!to-pink-500 !border-0 !text-base !font-bold shadow-xl hover:scale-101 active:scale-99 transition-all"
         >
-          Play Again
+          Play Another Match 🎮
         </Button>
       }
       closable={false}
       maskClosable={false}
       centered
+      width={480}
     >
-      <div className="space-y-4">
-        <div className="text-center">
-          <h3 className="text-xl font-bold mb-4">Final Results</h3>
+      <div className="py-2 space-y-4 text-center">
+        {/* Winner Trophy Hero */}
+        <div className="relative inline-block mx-auto">
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-400 via-yellow-400 to-amber-500 text-amber-950 flex items-center justify-center shadow-xl mx-auto animate-bounce">
+            <LuTrophy className="w-9 h-9" />
+          </div>
+          <div className="absolute -top-2 -right-2 text-yellow-500">
+            <LuSparkles className="w-5 h-5 animate-spin" />
+          </div>
         </div>
 
-        <div className="space-y-3">
-          {gameResults.rankings?.map((player: any, index: number) => (
-            <div
-              key={index}
-              className={`flex justify-between items-center p-4 rounded-lg ${
-                index === 0
-                  ? "bg-gradient-to-r from-yellow-200 to-yellow-300 border-2 border-yellow-400"
-                  : index === 1
-                  ? "bg-gradient-to-r from-gray-200 to-gray-300 border-2 border-gray-400"
-                  : index === 2
-                  ? "bg-gradient-to-r from-orange-200 to-orange-300 border-2 border-orange-400"
-                  : "bg-gray-100"
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl font-bold">
-                  {index === 0
-                    ? "1"
-                    : index === 1
-                    ? "2"
-                    : index === 2
-                    ? "3"
-                    : `${index + 1}.`}
-                </span>
-                <span className="font-bold text-lg">{player.username}</span>
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+            Game Over!
+          </h2>
+          {winner && (
+            <p className="text-sm font-semibold text-purple-700 mt-1">
+              🏆 Huge congratulations to{" "}
+              <span className="font-extrabold underline">{winner.username}</span> for winning!
+            </p>
+          )}
+        </div>
+
+        {/* Podium Standings */}
+        <div className="space-y-2 pt-2 text-left">
+          {rankings.map((player: any, index: number) => {
+            const avatar = getAvatarColor(player.username);
+            const isWinner = index === 0;
+            const isRunnerUp = index === 1;
+            const isThird = index === 2;
+
+            return (
+              <div
+                key={index}
+                className={`flex justify-between items-center p-3 rounded-2xl transition-all ${
+                  isWinner
+                    ? "bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 border-2 border-amber-400 shadow-md scale-102"
+                    : isRunnerUp
+                    ? "bg-slate-100 border border-slate-300"
+                    : isThird
+                    ? "bg-amber-50/70 border border-amber-200"
+                    : "bg-gray-50 border border-gray-100"
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="w-7 text-center font-black text-base sm:text-lg">
+                    {isWinner ? "🥇" : isRunnerUp ? "🥈" : isThird ? "🥉" : `#${index + 1}`}
+                  </span>
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${avatar.bg} ${avatar.text}`}
+                  >
+                    {getInitials(player.username)}
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm sm:text-base text-gray-900">
+                      {player.username}
+                    </span>
+                    {isWinner && (
+                      <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-amber-300 text-amber-950 px-2 py-0.5 rounded-full">
+                        Winner
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="font-black text-base sm:text-lg text-indigo-950">
+                  {player.score} <span className="text-xs font-semibold text-gray-500">pts</span>
+                </div>
               </div>
-              <span className="font-bold text-xl">{player.score} pts</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="text-center text-gray-600 mt-4">
-          <p>Thanks for playing! Get ready for another round!</p>
+            );
+          })}
         </div>
       </div>
     </Modal>

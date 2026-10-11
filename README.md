@@ -25,6 +25,8 @@
 
 - **Interactive Drawing Canvas** - Smooth drawing with brush, eraser, high-speed 4-way BFS flood fill paint bucket, and stroke undo stack (`Ctrl+Z`)
 - **Sound Effects Synthesizer** - Zero-dependency Web Audio API synthesizer for instant SFX (turn start, correct guess, close guess alert, time warning tick, penalty buzzer, victory fanfare) with a quick mute toggle
+- **Mobile-First Responsive Design & Main-Screen Guess Bar** - On phones and small screens, the live chat feed and answer input bar are placed directly on the main screen beneath the canvas for effortless mobile guessing without needing sidebars; lobby player rosters and video call are accessible via a sleek mobile drawer
+- **Joyful & Friendly Party-Game UI** - Cheerful pastel gradients, rounded tactile cards, dynamic player avatars with initials, lively podium celebrations, close-guess flame alerts, and responsive micro-interactions
 - **Custom Room Settings & Difficulty Tiers** - Hosts can customize round count (2-8), turn timer (45s, 60s, 80s, 100s), word difficulty (easy, medium, hard, mixed), and supply custom word lists
 - **12-Color Palette & Responsive Controls** - Full palette available on desktop and touch-friendly mobile layout
 - **Video Chat & WebRTC** - Peer-to-peer room-scoped audio and video calling

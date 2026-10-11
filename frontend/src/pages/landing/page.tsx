@@ -1,11 +1,19 @@
-import { Button, Card, message } from "antd";
+import { Button, message } from "antd";
 import axios from "axios";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { backend_url } from "../../utils/backend_url";
-import { LockFilled, TeamOutlined, PlayCircleOutlined, UserOutlined } from "@ant-design/icons";
-import { LuUsers, LuMouse, LuTimer } from "react-icons/lu";
+import {
+  LuSparkles,
+  LuPencil,
+  LuLightbulb,
+  LuTrophy,
+  LuPlay,
+  LuSettings2,
+  LuPalette,
+} from "react-icons/lu";
+import { getAvatarColor, getInitials } from "../../utils/avatarUtils";
 
 const Page = () => {
   const [username, setUsername] = useState(
@@ -17,7 +25,7 @@ const Page = () => {
   const [joinRoomPassword, setJoinRoomPassword] = useState("");
   const [roomId, setRoomId] = useState("");
   const [password, setPassword] = useState("");
-  const [state, setState] = useState("join");
+  const [state, setState] = useState<"join" | "create">("join");
   const [loading, setLoading] = useState(false);
   const [rounds, setRounds] = useState<number>(3);
   const [drawTime, setDrawTime] = useState<number>(80);
@@ -25,6 +33,8 @@ const Page = () => {
   const [customWords, setCustomWords] = useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const navigate = useNavigate();
+
+  const avatar = getAvatarColor(username);
 
   const handleJoinRoom = () => {
     if (!username.trim()) {
@@ -39,7 +49,7 @@ const Page = () => {
       message.error("Please enter a password");
       return;
     }
-    
+
     Cookies.set("username", username.trim(), { expires: 1 });
     async function joinRoom() {
       try {
@@ -57,7 +67,7 @@ const Page = () => {
             },
           }
         );
-        
+
         if (res.status === 200) {
           Cookies.set("token", res.data.token, { expires: 1 });
           Cookies.set("username", username.trim(), { expires: 1 });
@@ -65,7 +75,6 @@ const Page = () => {
         }
       } catch (err: any) {
         message.error(err.response?.data?.message || "Failed to join room");
-        console.log(err);
       } finally {
         setLoading(false);
       }
@@ -86,7 +95,7 @@ const Page = () => {
       message.error("Please enter a password");
       return;
     }
-    
+
     Cookies.set("username", username.trim(), { expires: 1 });
     async function createRoom() {
       try {
@@ -113,14 +122,13 @@ const Page = () => {
             },
           }
         );
-        
+
         if (res.status === 201) {
           Cookies.set("token", res.data.token, { expires: 1 });
           navigate(`/play/${roomId}`);
         }
       } catch (err: any) {
         message.error(err.response?.data?.message || "Failed to create room");
-        console.log(err);
       } finally {
         setLoading(false);
       }
@@ -128,308 +136,327 @@ const Page = () => {
     createRoom();
   };
 
-  
-
   return (
-    <div className="min-h-screen bg-slate-50 relative overflow-hidden">
-      {/* Subtle dot grid background */}
+    <div className="min-h-screen bg-gradient-to-br from-amber-50/70 via-purple-50/50 to-indigo-50/80 relative overflow-x-hidden">
+      {/* Decorative joyful doodles in background */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0 pointer-events-none opacity-40"
         style={{
-          backgroundImage: "radial-gradient(circle, #cbd5e1 1px, transparent 1px)",
+          backgroundImage: "radial-gradient(circle, #cbd5e1 1.2px, transparent 1.2px)",
           backgroundSize: "28px 28px",
-          opacity: 0.55,
         }}
       />
 
-      <div className="relative z-10 min-h-screen flex flex-col">
-        {/* Header */}
-        <div className="text-center pt-8 pb-4 px-4">
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-3 tracking-tight">
-            SketchBattle
-          </h1>
-          <p className="text-sm md:text-base max-w-md mx-auto text-gray-500">
-            A multiplayer drawing and guessing game. Join or create a room to
-            start playing.
-          </p>
-        </div>
+      <div className="relative z-10 min-h-screen flex flex-col justify-between px-3 sm:px-6 py-6 md:py-10 max-w-5xl mx-auto">
+        {/* Playful Header */}
+        <header className="text-center pt-2 pb-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 border border-purple-200/80 shadow-xs mb-3 animate-float-slow">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-bold text-purple-900 tracking-wide uppercase">
+              Real-time Multiplayer Drawing Game
+            </span>
+          </div>
 
-        {/* Main Game Card */}
-        <div className="flex-1 flex items-center justify-center px-4 pb-8">
-          <Card
-            className="w-full max-w-md backdrop-blur-xl rounded-3xl shadow-2xl border-0 overflow-hidden"
-            style={{
-              background: "rgba(255, 255, 255, 0.95)",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.15)",
-            }}
-          >
-            <div className="p-2">
-              {/* Tab Switcher */}
-              <div className="flex items-center justify-center mb-6">
-                <div className="bg-gray-100 p-1 rounded-2xl flex">
-                  <button
-                    className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                      state === "join"
-                        ? "bg-white text-purple-600 shadow-md"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                    onClick={() => setState("join")}
-                  >
-                    <TeamOutlined className="mr-2" />
-                    Join Room
-                  </button>                  <button
-                    className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                      state === "create"
-                        ? "bg-white text-purple-600 shadow-md"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                    onClick={() => setState("create")}
-                  >
-                    <LockFilled className="mr-2" />
-                    Create Room
-                  </button>
-                </div>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-gray-900 mb-2">
+            <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+              SketchBattle
+            </span>
+            <span className="inline-block ml-2 text-3xl sm:text-4xl">🎨</span>
+          </h1>
+
+          <p className="text-sm sm:text-base max-w-md mx-auto text-gray-600 font-medium">
+            Draw funny sketches, guess words with friends, and race to the top of the leaderboard!
+          </p>
+        </header>
+
+        {/* Main Card */}
+        <main className="w-full max-w-md mx-auto my-auto">
+          <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-purple-100/80 p-5 sm:p-7 transition-all">
+            {/* Playful Mode Toggle */}
+            <div className="bg-slate-100/80 p-1.5 rounded-2xl flex gap-1.5 mb-5 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setState("join")}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  state === "join"
+                    ? "bg-white text-indigo-700 shadow-sm scale-101"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                <LuPlay className="w-4 h-4" />
+                Join Room
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setState("create")}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  state === "create"
+                    ? "bg-white text-purple-700 shadow-sm scale-101"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                <LuSparkles className="w-4 h-4" />
+                Create Room
+              </button>
+            </div>
+
+            {/* Username Input with Avatar Preview */}
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+                  <LuPalette className="text-purple-600" /> Your Player Name
+                </label>
+                {username.trim() && (
+                  <span className="text-[11px] font-semibold text-purple-700">
+                    Looks great! ✨
+                  </span>
+                )}
               </div>
 
-              {/* Username Input */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <UserOutlined className="mr-2" />
-                  Your Username
-                </label>
+              <div className="relative flex items-center">
                 <input
                   type="text"
-                  placeholder="Enter your creative username"
+                  placeholder="e.g. MasterArtist"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-800"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white text-sm font-semibold text-gray-800 transition-all shadow-inner"
                   maxLength={20}
                 />
-              </div>
-
-              {/* Join Room Section */}
-              {state === "join" && (
-                <div className="space-y-4">
-                  <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                      <PlayCircleOutlined className="mr-2 text-gray-500" />
-                      Join Existing Room
-                    </h3>
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        placeholder="Room ID (e.g., ROOM123)"
-                        value={joinRoomId}
-                        onChange={(e) =>
-                          setJoinRoomId(e.target.value.toUpperCase())
-                        }
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all duration-300 text-gray-800"
-                        maxLength={10}
-                      />
-                      <input
-                        type="password"
-                        placeholder="Room Password"
-                        value={joinRoomPassword}
-                        onChange={(e) => setJoinRoomPassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all duration-300 text-gray-800"
-                      />
-                    </div>
-                    <Button
-                      type="primary"
-                      size="large"
-                      icon={<TeamOutlined />}
-                      loading={loading}
-                      disabled={loading}
-                      onClick={handleJoinRoom}
-                      className="w-full mt-4 h-12 text-lg font-semibold rounded-xl border-0 shadow-md hover:shadow-lg transition-all duration-300"
-                      style={{
-                        background: "#4f46e5",
-                      }}
-                    >
-                      Join Room
-                    </Button>
-                  </div>
+                <div
+                  className={`absolute left-2.5 w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shadow-xs ${avatar.bg} ${avatar.text} border ${avatar.border}`}
+                >
+                  {getInitials(username)}
                 </div>
-              )}
+              </div>
+            </div>
 
-              {/* Create Room Section */}
-              {state === "create" && (
-                <div className="space-y-4">
-                  <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                      <LockFilled className="mr-2 text-gray-500" />
-                      Create New Room
-                    </h3>
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        placeholder="Unique Room ID (e.g., MYROOM)"
-                        value={roomId}
-                        onChange={(e) =>
-                          setRoomId(e.target.value.toUpperCase())
-                        }
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all duration-300 text-gray-800"
-                        maxLength={10}
-                      />
-                      <input
-                        type="password"
-                        placeholder="Set Room Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all duration-300 text-gray-800"
-                      />
-                    </div>
+            {/* JOIN ROOM TAB */}
+            {state === "join" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Room Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. FUNNY_LOBBY"
+                    value={joinRoomId}
+                    onChange={(e) => setJoinRoomId(e.target.value.toUpperCase())}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white text-sm font-mono font-bold text-gray-800 transition-all uppercase"
+                    maxLength={15}
+                  />
+                </div>
 
-                    {/* Game Settings */}
-                    <div className="mt-4 pt-3 border-t border-gray-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-gray-700">Room Settings</span>
-                        <button
-                          type="button"
-                          onClick={() => setShowAdvanced(!showAdvanced)}
-                          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
-                        >
-                          {showAdvanced ? "Hide Settings" : "Customize Settings"}
-                        </button>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Room Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter room password"
+                    value={joinRoomPassword}
+                    onChange={(e) => setJoinRoomPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white text-sm font-semibold text-gray-800 transition-all"
+                  />
+                </div>
+
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<LuPlay className="w-4 h-4" />}
+                  loading={loading}
+                  onClick={handleJoinRoom}
+                  className="w-full !h-12 !rounded-2xl !bg-gradient-to-r !from-indigo-600 !to-purple-600 hover:!from-indigo-500 hover:!to-purple-500 !border-0 !text-base !font-bold shadow-lg hover:shadow-xl hover:scale-101 active:scale-99 transition-all cursor-pointer mt-2"
+                >
+                  Join Game 🚀
+                </Button>
+              </div>
+            )}
+
+            {/* CREATE ROOM TAB */}
+            {state === "create" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Custom Room ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. COOL_ROOM"
+                    value={roomId}
+                    onChange={(e) => setRoomId(e.target.value.toUpperCase())}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white text-sm font-mono font-bold text-gray-800 transition-all uppercase"
+                    maxLength={15}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Set Room Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Create a room password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white text-sm font-semibold text-gray-800 transition-all"
+                  />
+                </div>
+
+                {/* Friendly Room Settings */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+                      <LuSettings2 className="text-indigo-600" /> Game Settings
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
+                    >
+                      {showAdvanced ? "Hide" : "Customize"}
+                    </button>
+                  </div>
+
+                  {showAdvanced && (
+                    <div className="space-y-3 bg-purple-50/50 p-3.5 rounded-2xl border border-purple-100 text-xs transition-all">
+                      {/* Rounds */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700 font-bold">Rounds:</span>
+                        <div className="flex gap-1.5">
+                          {[2, 3, 5, 8].map((r) => (
+                            <button
+                              key={r}
+                              type="button"
+                              onClick={() => setRounds(r)}
+                              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
+                                rounds === r
+                                  ? "bg-purple-600 text-white shadow-xs"
+                                  : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                              }`}
+                            >
+                              {r}
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
-                      {showAdvanced && (
-                        <div className="space-y-3 bg-white p-3.5 rounded-xl border border-gray-200 text-xs">
-                          {/* Rounds */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-600 font-medium">Rounds</span>
-                            <div className="flex gap-1.5">
-                              {[2, 3, 5, 8].map((r) => (
-                                <button
-                                  key={r}
-                                  type="button"
-                                  onClick={() => setRounds(r)}
-                                  className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
-                                    rounds === r
-                                      ? "bg-indigo-600 text-white shadow-sm"
-                                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                  }`}
-                                >
-                                  {r}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Draw Time */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-600 font-medium">Draw Time</span>
-                            <div className="flex gap-1.5">
-                              {[45, 60, 80, 100].map((t) => (
-                                <button
-                                  key={t}
-                                  type="button"
-                                  onClick={() => setDrawTime(t)}
-                                  className={`px-2 py-1 rounded-lg font-medium transition-all ${
-                                    drawTime === t
-                                      ? "bg-indigo-600 text-white shadow-sm"
-                                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                  }`}
-                                >
-                                  {t}s
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Difficulty */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-600 font-medium">Difficulty</span>
-                            <div className="flex gap-1">
-                              {(["easy", "medium", "hard", "mixed"] as const).map((d) => (
-                                <button
-                                  key={d}
-                                  type="button"
-                                  onClick={() => setDifficulty(d)}
-                                  className={`px-2 py-1 rounded-lg capitalize font-medium transition-all ${
-                                    difficulty === d
-                                      ? "bg-indigo-600 text-white shadow-sm"
-                                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                  }`}
-                                >
-                                  {d}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Custom Words */}
-                          <div>
-                            <span className="text-gray-600 font-medium block mb-1">
-                              Custom Words <span className="text-gray-400 font-normal">(optional, comma-separated)</span>
-                            </span>
-                            <input
-                              type="text"
-                              placeholder="e.g. pikachu, matrix, sushi, spaceship"
-                              value={customWords}
-                              onChange={(e) => setCustomWords(e.target.value)}
-                              className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
-                            />
-                          </div>
+                      {/* Turn Draw Time */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700 font-bold">Draw Time:</span>
+                        <div className="flex gap-1.5">
+                          {[45, 60, 80, 100].map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setDrawTime(t)}
+                              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
+                                drawTime === t
+                                  ? "bg-purple-600 text-white shadow-xs"
+                                  : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                              }`}
+                            >
+                              {t}s
+                            </button>
+                          ))}
                         </div>
-                      )}
+                      </div>
+
+                      {/* Difficulty Tiers */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700 font-bold">Words:</span>
+                        <div className="flex gap-1">
+                          {(
+                            [
+                              { id: "easy", label: "🟢 Easy" },
+                              { id: "medium", label: "🟡 Med" },
+                              { id: "hard", label: "🔴 Hard" },
+                              { id: "mixed", label: "🌈 All" },
+                            ] as const
+                          ).map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => setDifficulty(item.id)}
+                              className={`px-2 py-1 rounded-xl font-bold transition-all ${
+                                difficulty === item.id
+                                  ? "bg-purple-600 text-white shadow-xs"
+                                  : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                              }`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom Words */}
+                      <div>
+                        <span className="text-gray-700 font-bold block mb-1">
+                          Custom Word List (optional):
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="pikachu, pizza, airplane, guitar"
+                          value={customWords}
+                          onChange={(e) => setCustomWords(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-400 text-gray-800 text-xs"
+                        />
+                      </div>
                     </div>
-
-                    <Button
-                      type="primary"
-                      size="large"
-                      icon={<LockFilled />}
-                      loading={loading}
-                      disabled={loading}
-                      onClick={handleCreateRoom}
-                      className="w-full mt-4 h-12 text-lg font-semibold rounded-xl border-0 shadow-md hover:shadow-lg transition-all duration-300"
-                      style={{
-                        background: "#4f46e5",
-                      }}
-                    >
-                      Create Room
-                    </Button>
-                  </div>
+                  )}
                 </div>
-              )}
+
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<LuSparkles className="w-4 h-4" />}
+                  loading={loading}
+                  onClick={handleCreateRoom}
+                  className="w-full !h-12 !rounded-2xl !bg-gradient-to-r !from-purple-600 !to-pink-600 hover:!from-purple-500 hover:!to-pink-500 !border-0 !text-base !font-bold shadow-lg hover:shadow-xl hover:scale-101 active:scale-99 transition-all cursor-pointer mt-2"
+                >
+                  Create Room ✨
+                </Button>
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* Playful How to Play Cards */}
+        <footer className="pt-8 pb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-3xl mx-auto">
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 border border-indigo-100 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                <LuPencil className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-900 text-xs sm:text-sm">Draw & Express</h4>
+                <p className="text-gray-500 text-xs">Use brush, flood fill, colors, and undo.</p>
+              </div>
             </div>
-          </Card>
-        </div>
 
-        {/* Game Instructions */}
-        <div className="px-4 pb-8">
-          <div className="max-w-2xl mx-auto bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">
-              How to Play
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-              <div className="flex flex-col items-center">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-2">
-                  <LuMouse className="w-6 h-6 text-purple-600" />
-                </div>
-                <p className="text-sm text-gray-600">
-                  Draw the given word using your mouse or touch
-                </p>
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 border border-purple-100 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                <LuLightbulb className="w-5 h-5" />
               </div>
-              <div className="flex flex-col items-center">
-                <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center mb-2">
-                  <LuUsers className="w-6 h-6 text-pink-600" />
-                </div>
-                <p className="text-sm text-gray-600">
-                  Other players guess what you're drawing
-                </p>
+              <div>
+                <h4 className="font-bold text-gray-900 text-xs sm:text-sm">Guess in Chat</h4>
+                <p className="text-gray-500 text-xs">Type your answer or use instant voice input.</p>
               </div>
-              <div className="flex flex-col items-center">
-                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-2">
-                  <LuTimer className="w-6 h-6 text-indigo-600" />
-                </div>
-                <p className="text-sm text-gray-600">
-                  Score points based on speed and accuracy
-                </p>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 border border-pink-100 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-700 flex items-center justify-center shrink-0">
+                <LuTrophy className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-900 text-xs sm:text-sm">Score & Win</h4>
+                <p className="text-gray-500 text-xs">Tiered points for early correct guessers.</p>
               </div>
             </div>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
   );

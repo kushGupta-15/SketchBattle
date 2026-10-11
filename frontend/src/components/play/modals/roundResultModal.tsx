@@ -1,6 +1,6 @@
 import { Modal, Button } from "antd";
-import { useEffect } from "react";
-import { LuCrown, LuTrophy, LuUsers } from "react-icons/lu";
+import { LuCrown, LuTrophy, LuUsers, LuSparkles } from "react-icons/lu";
+import { getAvatarColor, getInitials } from "../../../utils/avatarUtils";
 
 const RoundResultModal = ({
   showResultsModal,
@@ -10,10 +10,6 @@ const RoundResultModal = ({
   gameState,
 }: any) => {
   if (!roundResults) return null;
-  
-  useEffect(() => {
-    console.log("Round Results:", roundResults);
-  }, [roundResults]);
 
   const getSortedPlayers = () => {
     return players
@@ -26,33 +22,34 @@ const RoundResultModal = ({
 
   const getModalTitle = () => {
     if (roundResults.isGameEnding) {
-      return "Game Complete";
+      return "🎉 Final Round Complete!";
     } else if (roundResults.isLastTurnOfRound) {
-      return `Round ${roundResults.round} Complete`;
+      return `🌟 Round ${roundResults.round} Complete!`;
     } else {
-      return `Turn ${roundResults.turnInRound}/${roundResults.totalTurnsInRound} Results`;
+      return `Turn ${roundResults.turnInRound}/${roundResults.totalTurnsInRound} Wrap-Up`;
     }
   };
 
   const getButtonText = () => {
     if (roundResults.isGameEnding) {
-      return "View Final Results";
+      return "View Final Standings 🏆";
     } else if (roundResults.isLastTurnOfRound) {
-      return `Continue to Round ${roundResults.round + 1}`;
+      return `Start Round ${roundResults.round + 1} 🚀`;
     } else {
-      return "Next Turn";
+      return "Next Turn 🎨";
     }
   };
+
   return (
     <Modal
-      title={getModalTitle()}
+      title={null}
       open={showResultsModal}
       footer={
         <Button
           type="primary"
           onClick={() => setShowResultsModal(false)}
           size="large"
-          className="w-full"
+          className="w-full !h-12 !rounded-2xl !bg-gradient-to-r !from-indigo-600 !to-purple-600 hover:!from-indigo-500 hover:!to-purple-500 !border-0 !text-base !font-bold shadow-lg hover:scale-101 active:scale-99 transition-all"
         >
           {getButtonText()}
         </Button>
@@ -60,168 +57,122 @@ const RoundResultModal = ({
       closable={false}
       maskClosable={false}
       centered
-      width="95%"
-      style={{ maxWidth: "500px" }}
+      width={480}
     >
-      <div className="space-y-6">
-        {/* Turn Summary */}
-        <div className="text-center bg-gray-50 p-4 rounded-xl border border-gray-100">
-          <h3 className="text-xl font-bold mb-2">
-            The word was:{" "}
-            <span className="text-blue-600 text-2xl">{roundResults.word}</span>
-          </h3>
-          <p className="text-gray-600 mb-2">
-            <LuUsers className="inline w-4 h-4 mr-1" />
-            Drawn by:{" "}
-            <span className="font-semibold text-purple-600">{roundResults.drawer}</span>
-          </p>
-          
-          {/* Turn Progress */}
-          <div className="text-sm text-gray-500 mt-3">
-            <div className="flex justify-center items-center space-x-4">
-              <span>Turn {roundResults.turnInRound} of {roundResults.totalTurnsInRound}</span>
-              <span>•</span>
-              <span>Round {roundResults.round} of {roundResults.totalRounds}</span>
+      <div className="space-y-4 py-2">
+        {/* Title */}
+        <div className="text-center">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold mb-2">
+            <LuSparkles className="w-3.5 h-3.5" />
+            {getModalTitle()}
+          </div>
+
+          {/* Word Reveal Banner */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-purple-200 shadow-xs">
+            <span className="text-xs uppercase tracking-wider font-bold text-gray-500">
+              The secret word was
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-indigo-950 uppercase tracking-wide my-1">
+              {roundResults.word}
+            </h2>
+            <div className="inline-flex items-center gap-1.5 text-xs text-purple-700 font-semibold bg-white/80 px-2.5 py-1 rounded-full shadow-2xs">
+              <LuUsers className="w-3.5 h-3.5" />
+              Drawn by {roundResults.drawer}
             </div>
           </div>
         </div>
 
-        {/* Drawer Points Summary */}
+        {/* Drawer Score Summary */}
         {roundResults.drawerPointsAwarded !== undefined && (
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-700">Drawer ({roundResults.drawer}):</span>
-              <span className={`font-bold ${
-                roundResults.drawerPointsAwarded > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {roundResults.drawerPointsAwarded > 0 ? '+' : ''}{roundResults.drawerPointsAwarded} points
-              </span>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {roundResults.noOneGuessed 
-                ? "No one guessed - penalty applied" 
-                : `${roundResults.guessedPlayers.length} player(s) guessed correctly`
-              }
-            </div>
+          <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200 text-xs sm:text-sm">
+            <span className="font-medium text-gray-700">
+              Drawer Bonus ({roundResults.drawer}):
+            </span>
+            <span
+              className={`font-bold px-2 py-0.5 rounded-lg ${
+                roundResults.drawerPointsAwarded > 0
+                  ? "bg-emerald-100 text-emerald-800"
+                  : "bg-rose-100 text-rose-800"
+              }`}
+            >
+              {roundResults.drawerPointsAwarded > 0 ? "+" : ""}
+              {roundResults.drawerPointsAwarded} pts
+            </span>
           </div>
         )}
 
-        {/* Guessing Results */}
+        {/* Guessers Podium */}
         {roundResults.guessedPlayers && roundResults.guessedPlayers.length > 0 ? (
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h4 className="font-semibold mb-3 text-green-800 flex items-center">
-              <LuTrophy className="w-4 h-4 mr-2" />
-              Players who guessed correctly:
+          <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200">
+            <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-900 mb-2.5 flex items-center gap-1.5">
+              <LuTrophy className="w-4 h-4 text-emerald-600" />
+              Correct Guessers:
             </h4>
-            <div className="space-y-2">
-              {roundResults.guessedPlayers.map((playerName: string, index: number) => (
-                <div key={playerName} className="flex justify-between items-center bg-white p-2 rounded">
-                  <span className="flex items-center">
-                    {index === 0 && <span className="text-yellow-500 mr-2 font-bold text-xs">1st</span>}
-                    {index === 1 && <span className="text-gray-400 mr-2 font-bold text-xs">2nd</span>}
-                    {index === 2 && <span className="text-orange-500 mr-2 font-bold text-xs">3rd</span>}
-                    {index > 2 && <span className="text-gray-500 mr-2 text-xs">#{index + 1}</span>}
-                    {playerName}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    {index === 0 ? "120 pts" : 
-                     index === 1 ? "110 pts" : 
-                     index === 2 ? "100 pts" : "80 pts"}
-                  </span>
-                </div>
-              ))}
+            <div className="space-y-1.5">
+              {roundResults.guessedPlayers.map((playerName: string, index: number) => {
+                const medals = ["🥇 1st", "🥈 2nd", "🥉 3rd"];
+                const pts = index === 0 ? "+120 pts" : index === 1 ? "+110 pts" : index === 2 ? "+100 pts" : "+80 pts";
+
+                return (
+                  <div
+                    key={playerName}
+                    className="flex justify-between items-center bg-white p-2 px-3 rounded-xl shadow-2xs text-xs sm:text-sm font-semibold"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-600">
+                        {medals[index] || `#${index + 1}`}
+                      </span>
+                      <span className="text-gray-800">{playerName}</span>
+                    </span>
+                    <span className="text-emerald-600 font-bold">{pts}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (
-          <div className="bg-red-50 p-4 rounded-lg text-center">
-            <h4 className="font-semibold text-red-800 mb-2">No one guessed correctly.</h4>
-            <p className="text-red-600 text-sm">Better luck next time!</p>
+          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-center text-xs sm:text-sm text-amber-800 font-medium">
+            No one guessed this round. Good effort all around!
           </div>
         )}
 
-        {/* Current Scores */}
-        <div>
-          <h4 className="font-semibold mb-3 flex items-center">
-            <LuCrown className="w-4 h-4 mr-2" />
-            Current Leaderboard:
+        {/* Leaderboard snapshot */}
+        <div className="pt-2">
+          <h4 className="font-bold text-xs uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1.5">
+            <LuCrown className="w-4 h-4 text-amber-500" />
+            Current Standings:
           </h4>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {getSortedPlayers().map((player: any, index: number) => (
-              <div
-                key={player.userId}
-                className={`flex justify-between items-center p-3 rounded-lg transition-all ${
-                  index === 0
-                    ? "bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-300"
-                    : index === 1 
-                    ? "bg-gray-100 border border-gray-300"
-                    : index === 2
-                    ? "bg-orange-50 border border-orange-200"
-                    : "bg-gray-50"
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-sm">
-                    {index === 0 && <span className="text-xs font-bold text-yellow-600">1st</span>}
-                    {index === 1 && <span className="text-xs font-bold text-gray-500">2nd</span>}
-                    {index === 2 && <span className="text-xs font-bold text-orange-500">3rd</span>}
-                    {index > 2 && <span className="text-sm font-bold text-gray-600">#{index + 1}</span>}
-                  </div>
-                  <div>
-                    <span className={`font-medium ${
-                      index === 0 ? "text-yellow-800" : "text-gray-700"
-                    }`}>
-                      {player.username}
+          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+            {getSortedPlayers().map((player: any, index: number) => {
+              const avatar = getAvatarColor(player.username);
+              return (
+                <div
+                  key={player.userId}
+                  className={`flex justify-between items-center p-2 px-3 rounded-xl text-xs sm:text-sm font-semibold ${
+                    index === 0
+                      ? "bg-amber-100/70 text-amber-950 border border-amber-300"
+                      : "bg-gray-50 text-gray-800 border border-gray-100"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 text-center text-xs font-bold text-gray-500">
+                      {index === 0 ? "👑" : `${index + 1}.`}
                     </span>
-                    {player.username === roundResults.drawer && (
-                      <span className="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">
-                        Drew this turn
-                      </span>
-                    )}
+                    <div
+                      className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold ${avatar.bg} ${avatar.text}`}
+                    >
+                      {getInitials(player.username)}
+                    </div>
+                    <span>{player.username}</span>
                   </div>
-                </div>
-                <div className="text-right">
-                  <span className={`font-bold text-lg ${
-                    index === 0 ? "text-yellow-800" : "text-gray-800"
-                  }`}>
-                    {player.score}
+                  <span className="font-extrabold text-indigo-900">
+                    {player.score} pts
                   </span>
-                  <div className="text-xs text-gray-500">points</div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
-
-        {/* Game Progress Indicator */}
-        <div className="bg-blue-50 p-3 rounded-lg">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-blue-800">Game Progress</span>
-            <span className="text-sm text-blue-600">
-              {Math.round(((roundResults.round - 1) * roundResults.totalTurnsInRound + roundResults.turnInRound) / 
-                (roundResults.totalRounds * roundResults.totalTurnsInRound) * 100)}% Complete
-            </span>
-          </div>
-          <div className="w-full bg-blue-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{
-                width: `${((roundResults.round - 1) * roundResults.totalTurnsInRound + roundResults.turnInRound) / 
-                  (roundResults.totalRounds * roundResults.totalTurnsInRound) * 100}%`
-              }}
-            />
-          </div>
-        </div>
-
-        {roundResults.isGameEnding && (
-          <div className="text-center p-4 bg-gray-50 border border-gray-200 rounded-xl">
-            <p className="text-gray-800 font-bold text-lg">
-              Game Complete
-            </p>
-            <p className="text-gray-600 mt-1">
-              Check out the final results and rankings.
-            </p>
-          </div>
-        )}
       </div>
     </Modal>
   );

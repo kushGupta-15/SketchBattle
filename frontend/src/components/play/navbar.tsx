@@ -1,19 +1,26 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, message } from "antd";
 import { useState } from "react";
-import { LuLogOut, LuCopy, LuUser, LuVolume2, LuVolumeX } from "react-icons/lu";
+import {
+  LuLogOut,
+  LuCopy,
+  LuCheck,
+  LuVolume2,
+  LuVolumeX,
+  LuSparkles,
+} from "react-icons/lu";
 import Cookies from "js-cookie";
 import axios from "axios";
 import { backend_url } from "../../utils/backend_url";
 import { soundEffects } from "../../utils/soundEffects";
+import { getAvatarColor, getInitials } from "../../utils/avatarUtils";
 
-// Add socket prop interface
 interface NavbarProps {
-  socket?: any; // Add socket as a prop
+  socket?: any;
 }
 
 const Navbar = ({ socket }: NavbarProps) => {
-  const username = Cookies.get("username");
+  const username = Cookies.get("username") || "Player";
   const { roomId } = useParams<{ roomId: string }>();
   const domain = window.location.origin;
 
@@ -22,6 +29,8 @@ const Navbar = ({ socket }: NavbarProps) => {
   const [copied, setCopied] = useState(false);
   const [isMuted, setIsMuted] = useState(() => soundEffects.getMuted());
 
+  const avatar = getAvatarColor(username);
+
   const handleToggleMute = () => {
     const muted = soundEffects.toggleMute();
     setIsMuted(muted);
@@ -29,7 +38,7 @@ const Navbar = ({ socket }: NavbarProps) => {
       message.info("Audio muted");
     } else {
       message.success("Audio unmuted");
-      soundEffects.playCloseGuess(); // brief confirmation chime
+      soundEffects.playCloseGuess();
     }
   };
 
@@ -38,16 +47,11 @@ const Navbar = ({ socket }: NavbarProps) => {
       try {
         setLoading(true);
 
-        // FIX: Emit socket event FIRST to properly disconnect from game
         if (socket && roomId && username) {
-          console.log(`Emitting leaveRoom for ${username} in room ${roomId}`);
           socket.emit("leaveRoom", roomId, username);
-
-          // Give a small delay to ensure socket event is processed
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 300));
         }
 
-        // Then call the backend API to remove from database
         const res = await axios.post(
           `${backend_url}/api/logout`,
           { roomId },
@@ -60,23 +64,13 @@ const Navbar = ({ socket }: NavbarProps) => {
         );
 
         if (res.status === 200) {
-          // Clean up local storage and cookies
           Cookies.remove("token");
           Cookies.remove("username");
-
-          // Disconnect socket connection
-          if (socket) {
-            socket.disconnect();
-          }
-
-          message.success("Left room successfully");
+          if (socket) socket.disconnect();
+          message.success("Left room");
           navigate("/");
         }
       } catch (error) {
-        message.error("Failed to leave room");
-        console.log(error);
-
-        // Even if API fails, still try to clean up socket and navigate
         if (socket) {
           socket.emit("leaveRoom", roomId, username);
           socket.disconnect();
@@ -101,80 +95,86 @@ const Navbar = ({ socket }: NavbarProps) => {
   };
 
   return (
-    <div className="h-16 bg-gray-900 shadow-md">
-      <div className="h-full px-4 md:px-6 flex justify-between items-center text-white">
-        {/* Left Section - Logo & User */}
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            {/* <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"> */}
-              {/* <LuSparkles className="w-5 h-5" /> */}
-            {/* </div> */}
-            <span className="font-bold text-lg hidden sm:block">
+    <header className="h-14 sm:h-16 bg-white/90 backdrop-blur-md border-b border-indigo-100 shadow-xs sticky top-0 z-40 transition-all">
+      <div className="h-full max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 flex justify-between items-center gap-2">
+        {/* Left: Brand & Player */}
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+          <div
+            onClick={() => navigate("/")}
+            className="flex items-center space-x-1.5 cursor-pointer group shrink-0"
+          >
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+              <LuSparkles className="w-4 h-4" />
+            </div>
+            <span className="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-600 bg-clip-text text-transparent hidden sm:inline">
               SketchBattle
             </span>
           </div>
 
-          <div className="flex items-center space-x-2 bg-white/10 px-3 py-1.5 rounded-lg">
-            <LuUser className="w-4 h-4" />
-            <span className="font-medium text-sm">{username}</span>
+          {/* User Avatar Chip */}
+          <div className="flex items-center space-x-1.5 bg-gray-100/80 border border-gray-200/80 px-2 py-1 rounded-xl max-w-[120px] sm:max-w-[160px] truncate">
+            <div
+              className={`w-5 h-5 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0 ${avatar.bg} ${avatar.text}`}
+            >
+              {getInitials(username)}
+            </div>
+            <span className="font-semibold text-xs sm:text-sm text-gray-800 truncate">
+              {username}
+            </span>
           </div>
         </div>
 
-        {/* Center Section - Room Info */}
-        <div className="hidden md:flex items-center space-x-4">
-          <div className="text-center">
-            <div className="text-xs text-white/70">Room ID</div>
-            <div className="font-bold text-lg">{roomId}</div>
-          </div>
-
-          <Button
-            type="text"
-            icon={<LuCopy className={copied ? "text-green-400" : "text-indigo-300"} />}
+        {/* Center: Room Code Chip */}
+        <div className="flex items-center space-x-1.5 sm:space-x-2">
+          <div
             onClick={copyInviteLink}
-            className="!text-indigo-300 hover:!text-indigo-200 !border-indigo-400/40 hover:!bg-indigo-500/20 !rounded-lg font-medium"
-            size="small"
+            className="flex items-center space-x-1.5 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/80 px-2.5 py-1 rounded-xl cursor-pointer transition-all active:scale-95 group"
+            title="Click to copy invite link"
           >
-            {copied ? "Copied!" : "Copy Invite"}
-          </Button>
-        </div>
-
-        {/* Mobile Room Info */}
-        <div className="md:hidden flex items-center space-x-2">
-          <div className="text-center">
-            <div className="text-xs text-white/70">Room</div>
-            <div className="font-bold text-sm">{roomId}</div>
+            <span className="text-[11px] uppercase tracking-wider font-bold text-indigo-500 hidden md:inline">
+              Room
+            </span>
+            <span className="font-mono font-bold text-xs sm:text-sm text-indigo-900 tracking-wide">
+              {roomId}
+            </span>
+            {copied ? (
+              <LuCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            ) : (
+              <LuCopy className="w-3.5 h-3.5 text-indigo-500 group-hover:text-indigo-700 shrink-0" />
+            )}
           </div>
-          <Button
-            type="text"
-            icon={<LuCopy className="text-indigo-300" />}
-            onClick={copyInviteLink}
-            className="!text-indigo-300 hover:!bg-indigo-500/20 !border-indigo-400/40 !rounded-lg"
-            size="small"
-          />
         </div>
 
-        {/* Right Section - Audio & Exit */}
-        <div className="flex items-center space-x-2">
-          <Button
-            type="text"
-            icon={isMuted ? <LuVolumeX className="w-5 h-5 text-red-400" /> : <LuVolume2 className="w-5 h-5 text-emerald-400" />}
+        {/* Right: Audio toggle & Leave room */}
+        <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+          <button
+            type="button"
             onClick={handleToggleMute}
-            className="!text-white hover:!bg-white/10 !rounded-lg"
-            size="large"
-            title={isMuted ? "Unmute Sound Effects" : "Mute Sound Effects"}
-          />
+            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center border transition-all active:scale-95 ${
+              isMuted
+                ? "bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
+                : "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+            }`}
+            title={isMuted ? "Unmute audio" : "Mute audio"}
+          >
+            {isMuted ? (
+              <LuVolumeX className="w-4 h-4" />
+            ) : (
+              <LuVolume2 className="w-4 h-4" />
+            )}
+          </button>
+
           <Button
             onClick={handleLogout}
-            icon={<LuLogOut />}
+            icon={<LuLogOut className="w-3.5 h-3.5" />}
             loading={loading}
-            className="bg-white/10 text-white border-white/20 hover:bg-white/20 rounded-lg"
-            size="large"
+            className="!h-8 sm:!h-9 !px-2.5 sm:!px-3 !rounded-xl !bg-gray-100 hover:!bg-rose-50 hover:!text-rose-600 hover:!border-rose-200 !text-gray-700 !font-semibold !text-xs sm:!text-sm transition-all"
           >
-            <span className="hidden sm:inline">Exit Room</span>
+            <span className="hidden sm:inline">Leave</span>
           </Button>
         </div>
       </div>
-    </div>
+    </header>
   );
 };
 
