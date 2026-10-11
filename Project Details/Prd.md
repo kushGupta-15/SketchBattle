@@ -56,6 +56,10 @@ Room lifecycle management. Rooms clean themselves up once the last participant l
 
 Voice and video. Peer-to-peer audio and video signaling layers on top of the game session through WebRTC.
 
+Gameplay polish and creative tools. Canvas paint bucket (high-performance 4-way BFS flood fill algorithm), stroke undo stack with keyboard shortcut (`Ctrl+Z`), zero-dependency Web Audio API synthesizer for sound effects (correct guess chime, turn start fanfare, close guess ping, warning tick, penalty buzzer, game victory fanfare) with global audio mute persistence, and an expanded 12-color palette.
+
+Customizable room game rules. Room creators can customize total rounds (2-8), draw turn timer (45s, 60s, 80s, 100s), word difficulty tiers (easy, medium, hard, mixed), and optionally inject custom word lists.
+
 ## Known limitations and roadmap
 
-Recent improvements resolved room password hashing (bcrypt), player cap enforcement, mid-turn canvas restoration (`canvasHistory`), spoiler chat isolation, and cross-room WebRTC signaling isolation. Active backlog includes difficulty tier UI selection during room creation, canvas flood fill (paint bucket), and custom word lists.
+Recent improvements completed Phase 1 (room password bcrypt hashing, 8-player cap enforcement, mid-turn canvas restoration, spoiler chat isolation, WebRTC room scope checks, 24-hr TTL index) and Phase 2 (canvas flood fill paint bucket, stroke undo stack, Web Audio SFX synthesizer, custom room settings & difficulty tiers, 12-color palette). Active backlog includes room lobby chat pre-game and spectator mode for joining mid-match.

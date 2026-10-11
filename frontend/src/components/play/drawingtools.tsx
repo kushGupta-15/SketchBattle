@@ -1,119 +1,167 @@
-import { Button, Tooltip } from "antd";
+import { Tooltip } from "antd";
 import { BiMinus, BiPlus } from "react-icons/bi";
-import { LuEraser, LuTrash2 } from "react-icons/lu";
+import { LuEraser, LuTrash2, LuPencil, LuPaintBucket, LuUndo2 } from "react-icons/lu";
+
+interface DrawingToolsProps {
+  currentColor: string;
+  currentStroke: number;
+  toolMode: "brush" | "fill" | "eraser";
+  setToolMode: (mode: "brush" | "fill" | "eraser") => void;
+  handleColorChange: (color: string) => void;
+  handleStrokeChange: (stroke: number) => void;
+  clearCanvas: () => void;
+  undo: () => void;
+}
+
+const PALETTE = [
+  "#000000", // Black
+  "#ffffff", // White
+  "#ef4444", // Red
+  "#3b82f6", // Blue
+  "#10b981", // Green
+  "#f59e0b", // Yellow
+  "#f97316", // Orange
+  "#8b5cf6", // Purple
+  "#ec4899", // Pink
+  "#78350f", // Brown
+  "#6b7280", // Gray
+  "#06b6d4", // Cyan
+];
 
 const DrawingTools = ({
   currentColor,
   currentStroke,
-  isErasing,
+  toolMode,
+  setToolMode,
   handleColorChange,
   handleStrokeChange,
-  toggleEraser,
   clearCanvas,
-}: any) => {
-  
-  // FIX: Prevent event bubbling and add proper event handling
+  undo,
+}: DrawingToolsProps) => {
   const handleStrokePlus = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    handleStrokeChange(Math.min(currentStroke + 1, 16));
+    handleStrokeChange(Math.min(currentStroke + 2, 24));
   };
 
   const handleStrokeMinus = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    handleStrokeChange(Math.max(currentStroke - 1, 2));
-  };
-
-  const handleColorClick = (e: React.MouseEvent, color: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleColorChange(color);
-  };
-
-  const handleEraserClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleEraser();
-  };
-
-  const handleClearClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    clearCanvas();
+    handleStrokeChange(Math.max(currentStroke - 2, 2));
   };
 
   return (
-    <div className="w-12 bg-white shadow-md rounded p-2 flex flex-col items-center gap-3">
-      {/* Colors */}
-      <div className="flex flex-col gap-1">
-        {["black", "red", "blue", "green", "yellow"].map((color) => (
+    <div className="w-14 bg-white shadow-lg rounded-2xl p-2 flex flex-col items-center gap-3 border border-gray-100">
+      {/* Mode Selectors */}
+      <div className="flex flex-col gap-1 w-full items-center">
+        <Tooltip title="Brush Tool" placement="right">
           <button
-            key={color}
-            onClick={(e) => handleColorClick(e, color)}
-            className={`w-6 h-6 rounded-full border-2 transition-all ${
-              currentColor === color && !isErasing
-                ? "border-blue-500 ring-2 ring-blue-300"
-                : "border-gray-300 hover:border-gray-400"
+            type="button"
+            onClick={() => setToolMode("brush")}
+            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+              toolMode === "brush"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
-            style={{ backgroundColor: color }}
-            type="button" // Explicitly set button type
-          />
-        ))}
-      </div>
+          >
+            <LuPencil className="w-4 h-4" />
+          </button>
+        </Tooltip>
 
-      {/* Brush Size */}
-      <div className="flex flex-col items-center">
-        <div className="text-[10px] bg-gray-100 px-1 rounded mb-1">
-          {currentStroke}px
-        </div>
-        
-        {/* FIX: Add proper button structure and event handling */}
-        <div className="flex flex-col gap-1">
+        <Tooltip title="Paint Bucket (Flood Fill)" placement="right">
           <button
             type="button"
-            onClick={handleStrokePlus}
-            className="text-lg px-1 text-gray-700 hover:text-blue-500 flex items-center justify-center"
+            onClick={() => setToolMode("fill")}
+            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+              toolMode === "fill"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
           >
-            <BiPlus className="w-4 h-4" />
+            <LuPaintBucket className="w-4 h-4" />
           </button>
+        </Tooltip>
 
-          <button
-            type="button"
-            onClick={handleStrokeMinus}
-            className="text-lg px-1 text-gray-700 hover:text-blue-500 flex items-center justify-center"
-          >
-            <BiMinus className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Tools */}
-      <div className="flex flex-col items-center gap-2">
         <Tooltip title="Eraser" placement="right">
           <button
             type="button"
-            onClick={handleEraserClick}
-            className={`w-6 h-6 flex items-center justify-center rounded ${
-              isErasing
-                ? "bg-red-100 text-red-600 border border-red-400"
-                : "bg-gray-100 text-gray-600 border border-gray-300 hover:border-gray-400"
+            onClick={() => setToolMode("eraser")}
+            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+              toolMode === "eraser"
+                ? "bg-red-500 text-white shadow-sm"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             <LuEraser className="w-4 h-4" />
           </button>
         </Tooltip>
 
-        <Tooltip title="Clear Canvas" placement="right">
-          <Button
-            type="default"
-            onClick={handleClearClick}
-            danger
-            icon={<LuTrash2 className="w-4 h-4" />}
-            className="!p-0 !w-6 !h-6 flex items-center justify-center"
-            size="small"
-          />
+        <Tooltip title="Undo (Ctrl+Z)" placement="right">
+          <button
+            type="button"
+            onClick={undo}
+            className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+          >
+            <LuUndo2 className="w-4 h-4" />
+          </button>
         </Tooltip>
+
+        <Tooltip title="Clear Canvas" placement="right">
+          <button
+            type="button"
+            onClick={clearCanvas}
+            className="w-8 h-8 rounded-xl flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+          >
+            <LuTrash2 className="w-4 h-4" />
+          </button>
+        </Tooltip>
+      </div>
+
+      <div className="w-full h-px bg-gray-200" />
+
+      {/* Colors Grid */}
+      <div className="grid grid-cols-2 gap-1.5">
+        {PALETTE.map((color) => (
+          <button
+            key={color}
+            onClick={() => {
+              handleColorChange(color);
+              if (toolMode === "eraser") setToolMode("brush");
+            }}
+            className={`w-5 h-5 rounded-full border transition-all ${
+              currentColor === color && toolMode !== "eraser"
+                ? "ring-2 ring-blue-500 scale-110 border-white shadow-sm"
+                : "border-gray-300 hover:scale-105"
+            }`}
+            style={{ backgroundColor: color }}
+            type="button"
+          />
+        ))}
+      </div>
+
+      <div className="w-full h-px bg-gray-200" />
+
+      {/* Brush Size */}
+      <div className="flex flex-col items-center">
+        <div className="text-[10px] font-semibold text-gray-500 mb-1">
+          {currentStroke}px
+        </div>
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={handleStrokePlus}
+            className="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center text-xs"
+          >
+            <BiPlus />
+          </button>
+          <button
+            type="button"
+            onClick={handleStrokeMinus}
+            className="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center text-xs"
+          >
+            <BiMinus />
+          </button>
+        </div>
       </div>
     </div>
   );

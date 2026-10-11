@@ -4,7 +4,7 @@ class GameStateManager {
     this.roomDrawHistory = new Map();
   }
 
-  initializeGameRoom(roomId) {
+  initializeGameRoom(roomId, settings = {}) {
     return {
       roomId,
       players: new Map(), // socketId -> playerState
@@ -25,7 +25,13 @@ class GameStateManager {
       playerStates: new Map(), // userId -> player state (persistent across reconnections)
       revealedPositions: new Set(),
       drawingOrder: [], // Array of userIds (not socketIds)
-      isWordSelectionPhase: false
+      isWordSelectionPhase: false,
+      settings: {
+        rounds: settings?.rounds || 3,
+        drawTime: settings?.drawTime || 80,
+        difficulty: settings?.difficulty || 'medium',
+        customWords: settings?.customWords || []
+      }
     };
   }
 
@@ -33,9 +39,9 @@ class GameStateManager {
     return this.gameRooms.get(roomId);
   }
 
-  createGameRoom(roomId) {
+  createGameRoom(roomId, settings = {}) {
     if (!this.gameRooms.has(roomId)) {
-      this.gameRooms.set(roomId, this.initializeGameRoom(roomId));
+      this.gameRooms.set(roomId, this.initializeGameRoom(roomId, settings));
     }
     return this.gameRooms.get(roomId);
   }
@@ -209,6 +215,22 @@ class GameStateManager {
 
   clearDrawHistory(roomId) {
     this.roomDrawHistory.delete(roomId);
+  }
+
+  undoLastStroke(roomId) {
+    const history = this.roomDrawHistory.get(roomId);
+    if (!history || history.length === 0) return [];
+
+    const lastItem = history[history.length - 1];
+    if (lastItem.strokeId) {
+      const targetStrokeId = lastItem.strokeId;
+      while (history.length > 0 && history[history.length - 1].strokeId === targetStrokeId) {
+        history.pop();
+      }
+    } else {
+      history.pop();
+    }
+    return history;
   }
 
   getAllPlayers(roomId) {

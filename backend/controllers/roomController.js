@@ -6,7 +6,7 @@ import { GAME_CONFIG } from "../config/gameConfig.js";
 // Create a room
 export const createRoom = async (req, res) => {
   try {
-    const { roomId, username, password } = req.body;
+    const { roomId, username, password, settings } = req.body;
 
     if (!roomId || !username || !password) {
       return res.status(400).json({ message: "All fields are required" });
@@ -32,6 +32,16 @@ export const createRoom = async (req, res) => {
       return res.status(400).json({ message: "Room already exists" });
     }
 
+    // Sanitize optional custom settings
+    const roomSettings = {
+      rounds: Number(settings?.rounds) >= 2 && Number(settings?.rounds) <= 8 ? Number(settings.rounds) : 3,
+      drawTime: [45, 60, 80, 100].includes(Number(settings?.drawTime)) ? Number(settings.drawTime) : 80,
+      difficulty: ["easy", "medium", "hard", "mixed"].includes(settings?.difficulty) ? settings.difficulty : "medium",
+      customWords: Array.isArray(settings?.customWords)
+        ? settings.customWords.map(w => String(w).trim().toLowerCase()).filter(w => w.length >= 2 && w.length <= 30).slice(0, 50)
+        : []
+    };
+
     // Hash room password with bcrypt
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -39,6 +49,7 @@ export const createRoom = async (req, res) => {
       roomId: cleanRoomId,
       password: hashedPassword,
       participants: [{ username: cleanUsername, score: 0, admin: true }],
+      settings: roomSettings,
     });
 
     await newRoom.save();

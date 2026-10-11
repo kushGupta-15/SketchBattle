@@ -19,6 +19,11 @@ const Page = () => {
   const [password, setPassword] = useState("");
   const [state, setState] = useState("join");
   const [loading, setLoading] = useState(false);
+  const [rounds, setRounds] = useState<number>(3);
+  const [drawTime, setDrawTime] = useState<number>(80);
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "mixed">("medium");
+  const [customWords, setCustomWords] = useState<string>("");
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const navigate = useNavigate();
 
   const handleJoinRoom = () => {
@@ -92,6 +97,15 @@ const Page = () => {
             roomId: roomId.trim(),
             username: username.trim(),
             password: password,
+            settings: {
+              rounds,
+              drawTime,
+              difficulty,
+              customWords: customWords
+                .split(",")
+                .map((w) => w.trim().toLowerCase())
+                .filter((w) => w.length >= 2),
+            },
           },
           {
             headers: {
@@ -265,6 +279,102 @@ const Page = () => {
                         className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition-all duration-300 text-gray-800"
                       />
                     </div>
+
+                    {/* Game Settings */}
+                    <div className="mt-4 pt-3 border-t border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-gray-700">Room Settings</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvanced(!showAdvanced)}
+                          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
+                        >
+                          {showAdvanced ? "Hide Settings" : "Customize Settings"}
+                        </button>
+                      </div>
+
+                      {showAdvanced && (
+                        <div className="space-y-3 bg-white p-3.5 rounded-xl border border-gray-200 text-xs">
+                          {/* Rounds */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600 font-medium">Rounds</span>
+                            <div className="flex gap-1.5">
+                              {[2, 3, 5, 8].map((r) => (
+                                <button
+                                  key={r}
+                                  type="button"
+                                  onClick={() => setRounds(r)}
+                                  className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                                    rounds === r
+                                      ? "bg-indigo-600 text-white shadow-sm"
+                                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  }`}
+                                >
+                                  {r}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Draw Time */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600 font-medium">Draw Time</span>
+                            <div className="flex gap-1.5">
+                              {[45, 60, 80, 100].map((t) => (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() => setDrawTime(t)}
+                                  className={`px-2 py-1 rounded-lg font-medium transition-all ${
+                                    drawTime === t
+                                      ? "bg-indigo-600 text-white shadow-sm"
+                                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  }`}
+                                >
+                                  {t}s
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Difficulty */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600 font-medium">Difficulty</span>
+                            <div className="flex gap-1">
+                              {(["easy", "medium", "hard", "mixed"] as const).map((d) => (
+                                <button
+                                  key={d}
+                                  type="button"
+                                  onClick={() => setDifficulty(d)}
+                                  className={`px-2 py-1 rounded-lg capitalize font-medium transition-all ${
+                                    difficulty === d
+                                      ? "bg-indigo-600 text-white shadow-sm"
+                                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  }`}
+                                >
+                                  {d}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Custom Words */}
+                          <div>
+                            <span className="text-gray-600 font-medium block mb-1">
+                              Custom Words <span className="text-gray-400 font-normal">(optional, comma-separated)</span>
+                            </span>
+                            <input
+                              type="text"
+                              placeholder="e.g. pikachu, matrix, sushi, spaceship"
+                              value={customWords}
+                              onChange={(e) => setCustomWords(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <Button
                       type="primary"
                       size="large"

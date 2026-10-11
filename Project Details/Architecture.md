@@ -47,13 +47,13 @@ flowchart TB
 
 ## Technology stack
 
-Frontend: React 18 with TypeScript, built with Vite, styled with Tailwind CSS, deployed to Vercel.
+Frontend: React 18 with TypeScript, built with Vite, styled with Tailwind CSS, deployed to Vercel. Includes zero-dependency Web Audio API synthesizer for instant in-game sound effects (`soundEffects.ts`) and BFS canvas flood fill (`floodFill.ts`).
 
 Backend: Node.js with Express, deployed to Render.
 
-Real-time transport: Socket.IO, used for all in-game events and WebRTC signaling.
+Real-time transport: Socket.IO, used for all in-game events, drawing synchronization (stroke batches & flood fill actions), stroke undo stack broadcasts, and WebRTC signaling.
 
-Database: MongoDB, accessed through Mongoose, with 24-hour TTL index room expiration.
+Database: MongoDB, accessed through Mongoose, with 24-hour TTL index room expiration and customizable room game rules (rounds, turn duration, word difficulty, custom words).
 
 Authentication & Security: JWT checked on both REST requests and Socket.IO events, and bcrypt cryptographic password hashing for room protection.
 
@@ -116,7 +116,9 @@ SketchBattle/
     │   ├── types/
     │   │   └── types.ts
     │   ├── utils/
-    │   │   └── backend_url.ts
+    │   │   ├── backend_url.ts
+    │   │   ├── floodFill.ts           # 4-way BFS canvas flood fill
+    │   │   └── soundEffects.ts        # zero-dependency Web Audio synthesizer
     │   ├── App.tsx
     │   ├── index.css
     │   ├── main.tsx

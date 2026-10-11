@@ -2,6 +2,7 @@ import { GAME_CONFIG } from '../config/gameConfig.js';
 import { calculatePoints, checkWordMatch, isCloseGuess } from '../utils/gameUtils.js';
 import gameStateManager from '../services/gameStateManager.js';
 import GameLogic from '../services/gameLogic.js';
+import Room from '../models/roomModel.js';
 
 export default function setupSocketHandlers(io) {
   const gameLogic = new GameLogic(io);
@@ -36,12 +37,22 @@ export default function setupSocketHandlers(io) {
     });
     
     // Join Room Handler
-    socket.on("joinRoom", (roomId, username) => {
+    socket.on("joinRoom", async (roomId, username) => {
       socket.join(roomId);
       console.log(`${decoded.username} joining room: ${roomId}`);
       
-      // Initialize game room if it doesn't exist
-      const gameRoom = gameStateManager.createGameRoom(roomId);
+      let roomSettings = {};
+      try {
+        const roomDoc = await Room.findOne({ roomId: decoded.roomId }).select("settings");
+        if (roomDoc && roomDoc.settings) {
+          roomSettings = roomDoc.settings;
+        }
+      } catch (err) {
+        console.error("Error retrieving room settings:", err);
+      }
+
+      // Initialize game room if it doesn't exist (with room settings)
+      const gameRoom = gameStateManager.createGameRoom(roomId, roomSettings);
       
       // Add or update player (handles reconnection)
       const playerState = gameStateManager.addOrUpdatePlayer(roomId, socket.id, {
@@ -59,17 +70,19 @@ export default function setupSocketHandlers(io) {
         socket.emit("canvasHistory", history);
       }
       
+      const totalRounds = gameRoom.settings?.rounds || GAME_CONFIG.TOTAL_ROUNDS;
+
       // Send current game state to the player
       socket.emit("gameState", {
         state: gameRoom.gameState,
         round: gameRoom.currentRound,
-        totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
+        totalRounds: totalRounds,
         turnInRound: gameRoom.currentTurnInRound,
         totalTurnsInRound: gameRoom.totalPlayers,
         players: gameStateManager.getAllPlayers(roomId),
         scores: Object.fromEntries(gameRoom.scores),
         currentDrawer: gameRoom.currentDrawer ? 
-          gameStateManager.getPlayerByUserId(roomId, gameRoom.currentDrawer)?.username : null, // FIX: Send username, not userId
+          gameStateManager.getPlayerByUserId(roomId, gameRoom.currentDrawer)?.username : null,
         timeLeft: gameRoom.roundEndTime ? Math.max(0, gameRoom.roundEndTime - Date.now()) : 0
       });
       
@@ -367,6 +380,21 @@ export default function setupSocketHandlers(io) {
       
       gameStateManager.clearDrawHistory(roomId);
       io.to(roomId).emit("canvasClear");
+    });
+
+    // Undo Draw Handler
+    socket.on("undoDraw", () => {
+      const roomId = decoded.roomId;
+      const gameRoom = gameStateManager.getGameRoom(roomId);
+      if (!gameRoom || gameRoom.isWordSelectionPhase) return;
+
+      const player = gameStateManager.getPlayerBySocketId(roomId, socket.id);
+      if (!player || player.userId !== gameRoom.currentDrawer) {
+        return; // Only current drawer can undo
+      }
+
+      const updatedHistory = gameStateManager.undoLastStroke(roomId);
+      io.to(roomId).emit("canvasHistory", updatedHistory);
     });
 
     // Disconnect handler

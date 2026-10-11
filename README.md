@@ -23,18 +23,15 @@
 
 ## Features
 
-- **Interactive Drawing Canvas** - Smooth drawing with mouse/touch support
-- **Video Chat** - See and talk to your friends while playing
-- **Voice Input & Feedback** - Use your voice to chat and get game updates
-- **Smart Reconnection** - Reconnect within 10 seconds if you're the current drawer, or the game waits up to 30 seconds before ending if the room empties out — your score and progress are preserved either way
-- **Timed Rounds & Turns** - Fast-paced gameplay with countdown timers (80-second drawing turns, 15-second word selection)
-- **Rank-Based Scoring System** - The faster you guess relative to other players, the more points you earn (1st, 2nd, 3rd, and late-guess tiers)
-- **Private Rooms** - Create password-protected lobbies for your friends
-- **JWT Authentication** - Token-based user sessions (REST + Socket.IO)
-- **Responsive Design** - Play on desktop, tablet, or mobile
-- **Real-time Communication** - Instant updates via WebSockets
-- **Customizable Drawing Tools** - Choose colors, brush sizes, and clear the canvas
-- **Smart Hints** - Progressive letter reveals as the turn timer counts down
+- **Interactive Drawing Canvas** - Smooth drawing with brush, eraser, high-speed 4-way BFS flood fill paint bucket, and stroke undo stack (`Ctrl+Z`)
+- **Sound Effects Synthesizer** - Zero-dependency Web Audio API synthesizer for instant SFX (turn start, correct guess, close guess alert, time warning tick, penalty buzzer, victory fanfare) with a quick mute toggle
+- **Custom Room Settings & Difficulty Tiers** - Hosts can customize round count (2-8), turn timer (45s, 60s, 80s, 100s), word difficulty (easy, medium, hard, mixed), and supply custom word lists
+- **12-Color Palette & Responsive Controls** - Full palette available on desktop and touch-friendly mobile layout
+- **Video Chat & WebRTC** - Peer-to-peer room-scoped audio and video calling
+- **Voice Input & Feedback** - Speech recognition for guessing and speech synthesis game announcements
+- **Smart Reconnection** - Reconnect without score resets, with automatic mid-turn canvas stroke restoration
+- **Rank-Based Scoring System** - Speed-tiered guessing points with drawer bonuses and penalties
+- **Security & Hygiene** - bcrypt password hashing, 8-player lobby cap, 24-hour TTL index in MongoDB, and isolated spoiler chat for correct guessers
 
 ## How to Play
 

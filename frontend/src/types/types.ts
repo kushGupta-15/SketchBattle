@@ -53,6 +53,8 @@ export interface DrawData {
   roomId: string;
   color: string;
   stroke: number;
+  type?: "stroke" | "fill";
+  strokeId?: string;
 }
 
 export interface ChatMessage {

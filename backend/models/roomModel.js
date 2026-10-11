@@ -12,6 +12,12 @@ const roomSchema = new mongoose.Schema(
     roomId: { type: String, required: true, unique: true, index: true },
     password: { type: String, default: "" },
     participants: [participantSchema],
+    settings: {
+      rounds: { type: Number, default: 3 },
+      drawTime: { type: Number, default: 80 },
+      difficulty: { type: String, default: "medium" },
+      customWords: { type: [String], default: [] },
+    },
   },
   { timestamps: true }
 );

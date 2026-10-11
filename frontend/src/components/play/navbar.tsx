@@ -1,10 +1,11 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, message } from "antd";
-import { LuLogOut, LuCopy, LuUser } from "react-icons/lu";
+import { useState } from "react";
+import { LuLogOut, LuCopy, LuUser, LuVolume2, LuVolumeX } from "react-icons/lu";
 import Cookies from "js-cookie";
 import axios from "axios";
 import { backend_url } from "../../utils/backend_url";
-import { useState } from "react";
+import { soundEffects } from "../../utils/soundEffects";
 
 // Add socket prop interface
 interface NavbarProps {
@@ -19,6 +20,18 @@ const Navbar = ({ socket }: NavbarProps) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => soundEffects.getMuted());
+
+  const handleToggleMute = () => {
+    const muted = soundEffects.toggleMute();
+    setIsMuted(muted);
+    if (muted) {
+      message.info("Audio muted");
+    } else {
+      message.success("Audio unmuted");
+      soundEffects.playCloseGuess(); // brief confirmation chime
+    }
+  };
 
   const handleLogout = () => {
     const logout = async () => {
@@ -140,16 +153,26 @@ const Navbar = ({ socket }: NavbarProps) => {
           />
         </div>
 
-        {/* Right Section - Exit */}
-        <Button
-          onClick={handleLogout}
-          icon={<LuLogOut />}
-          loading={loading}
-          className="bg-white/10 text-white border-white/20 hover:bg-white/20 rounded-lg"
-          size="large"
-        >
-          <span className="hidden sm:inline">Exit Room</span>
-        </Button>
+        {/* Right Section - Audio & Exit */}
+        <div className="flex items-center space-x-2">
+          <Button
+            type="text"
+            icon={isMuted ? <LuVolumeX className="w-5 h-5 text-red-400" /> : <LuVolume2 className="w-5 h-5 text-emerald-400" />}
+            onClick={handleToggleMute}
+            className="!text-white hover:!bg-white/10 !rounded-lg"
+            size="large"
+            title={isMuted ? "Unmute Sound Effects" : "Mute Sound Effects"}
+          />
+          <Button
+            onClick={handleLogout}
+            icon={<LuLogOut />}
+            loading={loading}
+            className="bg-white/10 text-white border-white/20 hover:bg-white/20 rounded-lg"
+            size="large"
+          >
+            <span className="hidden sm:inline">Exit Room</span>
+          </Button>
+        </div>
       </div>
     </div>
   );

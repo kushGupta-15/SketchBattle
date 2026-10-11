@@ -1,9 +1,19 @@
 import { wordLists, GAME_CONFIG } from '../config/gameConfig.js';
 
-// Get random words for choices (non-mutating Fisher-Yates shuffle)
-export function getRandomWords(difficulty = 'medium', count = 3) {
-  const words = wordLists[difficulty] || wordLists.medium;
-  const copy = [...words];
+// Get random words for choices (non-mutating Fisher-Yates shuffle with difficulty & custom words)
+export function getRandomWords(difficulty = 'medium', count = 3, customWords = []) {
+  let pool = [];
+  if (difficulty === 'mixed') {
+    pool = [...wordLists.easy, ...wordLists.medium, ...wordLists.hard];
+  } else {
+    pool = [...(wordLists[difficulty] || wordLists.medium)];
+  }
+
+  if (Array.isArray(customWords) && customWords.length > 0) {
+    pool.push(...customWords);
+  }
+
+  const copy = [...pool];
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [copy[i], copy[j]] = [copy[j], copy[i]];

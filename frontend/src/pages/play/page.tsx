@@ -19,10 +19,14 @@ import {
   LuPencil,
   LuMenu,
   LuX,
+  LuPaintBucket,
+  LuUndo2,
 } from "react-icons/lu";
 import { backend_url } from "../../utils/backend_url";
 import DrawingTools from "../../components/play/drawingtools";
 import { useVoiceFeedback } from "../../hooks/useVoiceFeedback";
+import { floodFill } from "../../utils/floodFill";
+import { soundEffects } from "../../utils/soundEffects";
 
 // interface DrawData {
 //   x: number;
@@ -61,9 +65,12 @@ const Page = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState<string>("");
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
-  const [currentColor, setCurrentColor] = useState<string>("black");
+  const [currentColor, setCurrentColor] = useState<string>("#000000");
   const [currentStroke, setCurrentStroke] = useState<number>(4);
-  const [isErasing, setIsErasing] = useState<boolean>(false);
+  const [toolMode, setToolMode] = useState<"brush" | "fill" | "eraser">("brush");
+  const isErasing = toolMode === "eraser";
+  const currentStrokeId = useRef<string>("");
+  const lastWarnSecond = useRef<number>(-1);
   const [username, setUsername] = useState<string>(
     Cookies.get("username") || ""
   );
@@ -221,7 +228,13 @@ const Page = () => {
     };
 
     const handleDrawEvent = (data: DrawData) => {
-      if (!ctxRef.current) return;
+      const canvas = canvasRef.current;
+      if (!ctxRef.current || !canvas) return;
+
+      if (data.type === "fill") {
+        floodFill(canvas, data.x, data.y, data.color);
+        return;
+      }
 
       ctxRef.current.strokeStyle = data.color;
       ctxRef.current.lineWidth = data.stroke;
@@ -290,6 +303,13 @@ const Page = () => {
       "timeUpdate",
       (data: { timeLeft: number; roundEndTime: number; wordHint?: string }) => {
         setTimeLeft(data.timeLeft);
+        if (data.timeLeft <= 10000 && data.timeLeft > 0) {
+          const sec = Math.floor(data.timeLeft / 1000);
+          if (sec !== lastWarnSecond.current) {
+            lastWarnSecond.current = sec;
+            soundEffects.playTimeWarning();
+          }
+        }
         // Always update word hint when provided (for non-drawers)
         if (data.wordHint && !isCurrentDrawer) {
           setWordHint(data.wordHint);
@@ -319,6 +339,7 @@ const Page = () => {
 
     // Fix the newTurn handler to properly set drawer state
     socket.on("newTurn", (data: any) => {
+      soundEffects.playTurnStart();
       console.log("New turn data:", data); // Debug log
       setShowPreparation(true);
       setCurrentTurn(data.turnInRound);
@@ -409,6 +430,7 @@ const Page = () => {
     });
 
     socket.on("correctGuess", (data: any) => {
+      soundEffects.playCorrectGuess();
       m.success(`${data.username} guessed correctly! +${data.points} points`);
       if (data.username === Cookies.get("username")) {
         speak("Correct! Well done!");
@@ -423,6 +445,7 @@ const Page = () => {
 
     // Listen for drawer penalty
     socket.on("drawerPenalty", (data: any) => {
+      soundEffects.playPenalty();
       m.error({
         content: (
           <div>
@@ -485,6 +508,7 @@ const Page = () => {
     });
 
     socket.on("gameEnd", (data: any) => {
+      soundEffects.playGameEnd();
       setGameResults(data);
       setGameState((prev) => ({ ...prev, state: "ended" }));
       
@@ -505,6 +529,9 @@ const Page = () => {
     });
 
     socket.on("chatMessage", (message: ChatMessage) => {
+      if (message.username === "System" && message.message?.includes("is very close!")) {
+        soundEffects.playCloseGuess();
+      }
       setMessages((prev) => [...prev, message]);
     });
 
@@ -599,15 +626,87 @@ const Page = () => {
     }
   };
 
+  const handleUndo = () => {
+    if (!socket || !isCurrentDrawer) return;
+    socket.emit("undoDraw");
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
+        if (
+          document.activeElement?.tagName === "INPUT" ||
+          document.activeElement?.tagName === "TEXTAREA"
+        ) {
+          return;
+        }
+        if (isCurrentDrawer && socket) {
+          e.preventDefault();
+          handleUndo();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isCurrentDrawer, socket]);
+
   const startDrawing = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
     if (!isCurrentDrawer || !ctxRef.current || !socket || !roomId) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
     e.preventDefault();
-    setIsDrawing(true);
     const coords = getCoordinates(e);
+
+    if (toolMode === "fill") {
+      const fillColor = currentColor;
+      floodFill(canvas, coords.x, coords.y, fillColor);
+
+      const fillData: DrawData = {
+        x: coords.x,
+        y: coords.y,
+        lastX: coords.x,
+        lastY: coords.y,
+        roomId,
+        color: fillColor,
+        stroke: 1,
+        type: "fill",
+        strokeId: `fill-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      };
+
+      socket.emit("draw", fillData);
+      return;
+    }
+
+    setIsDrawing(true);
+    currentStrokeId.current = `stroke-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     lastCoords.current = coords;
+
+    const color = toolMode === "eraser" ? "white" : currentColor;
+    const stroke = toolMode === "eraser" ? 20 : currentStroke;
+
+    const initialDrawData: DrawData = {
+      x: coords.x,
+      y: coords.y,
+      lastX: coords.x,
+      lastY: coords.y,
+      roomId,
+      color,
+      stroke,
+      type: "stroke",
+      strokeId: currentStrokeId.current,
+    };
+
+    socket.emit("draw", initialDrawData);
+
+    ctxRef.current.strokeStyle = color;
+    ctxRef.current.lineWidth = stroke;
+    ctxRef.current.beginPath();
+    ctxRef.current.moveTo(coords.x, coords.y);
+    ctxRef.current.lineTo(coords.x, coords.y);
+    ctxRef.current.stroke();
   };
 
   const stopDrawing = () => {
@@ -623,8 +722,8 @@ const Page = () => {
 
     e.preventDefault();
     const coords = getCoordinates(e);
-    const color = isErasing ? "white" : currentColor;
-    const stroke = isErasing ? 20 : currentStroke;
+    const color = toolMode === "eraser" ? "white" : currentColor;
+    const stroke = toolMode === "eraser" ? 20 : currentStroke;
 
     const drawData: DrawData = {
       x: coords.x,
@@ -634,6 +733,8 @@ const Page = () => {
       roomId,
       color,
       stroke,
+      type: "stroke",
+      strokeId: currentStrokeId.current,
     };
 
     socket.emit("draw", drawData);
@@ -673,15 +774,11 @@ const Page = () => {
   // Tool handlers
   const handleColorChange = (color: string) => {
     setCurrentColor(color);
-    setIsErasing(false);
+    if (toolMode === "eraser") setToolMode("brush");
   };
 
   const handleStrokeChange = (stroke: number) => {
     setCurrentStroke(stroke);
-  };
-
-  const toggleEraser = () => {
-    setIsErasing((prev) => !prev);
   };
 
   const clearCanvas = () => {
@@ -690,11 +787,18 @@ const Page = () => {
   };
 
   const colors = [
-    { name: "Black", value: "black", bg: "bg-black" },
-    { name: "Red", value: "red", bg: "bg-red-500" },
-    { name: "Blue", value: "blue", bg: "bg-blue-500" },
-    { name: "Green", value: "green", bg: "bg-green-500" },
-    { name: "Yellow", value: "yellow", bg: "bg-yellow-400" },
+    { name: "Black", value: "#000000" },
+    { name: "White", value: "#ffffff" },
+    { name: "Red", value: "#ef4444" },
+    { name: "Blue", value: "#3b82f6" },
+    { name: "Green", value: "#10b981" },
+    { name: "Yellow", value: "#f59e0b" },
+    { name: "Orange", value: "#f97316" },
+    { name: "Purple", value: "#8b5cf6" },
+    { name: "Pink", value: "#ec4899" },
+    { name: "Brown", value: "#78350f" },
+    { name: "Gray", value: "#6b7280" },
+    { name: "Cyan", value: "#06b6d4" },
   ];
 
   return (
@@ -830,17 +934,15 @@ const Page = () => {
             {/* Drawing Tools - Desktop */}
             {isCurrentDrawer && (
               <div className="hidden lg:flex flex-col w-16">
-                {" "}
-                {/* Increased width from w-16 to w-20 */}
-                {/* Drawing Tools Card */}
                 <DrawingTools
                   currentColor={currentColor}
                   currentStroke={currentStroke}
-                  isErasing={isErasing}
+                  toolMode={toolMode}
+                  setToolMode={setToolMode}
                   handleColorChange={handleColorChange}
                   handleStrokeChange={handleStrokeChange}
-                  toggleEraser={toggleEraser}
                   clearCanvas={clearCanvas}
+                  undo={handleUndo}
                 />
               </div>
             )}
@@ -848,32 +950,36 @@ const Page = () => {
             {/* Drawing Tools - Mobile */}
             {isCurrentDrawer && (
               <div className="lg:hidden bg-white rounded-2xl shadow-lg p-3 flex flex-col gap-2 shrink-0">
-                <div className="flex items-center justify-between gap-4">
-                  {/* Colors - Mobile */}
-                  <div className="flex gap-2 overflow-x-auto py-1">
-                    {colors.map((color) => (
-                      <button
-                        key={color.value}
-                        onClick={() => handleColorChange(color.value)}
-                        className={`w-7 h-7 rounded-full ${
-                          color.bg
-                        } shadow-sm border-2 shrink-0 ${
-                          currentColor === color.value && !isErasing
-                            ? "border-purple-600 scale-110"
-                            : "border-gray-200"
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Actions (Eraser, Clear) */}
-                  <div className="flex gap-2 shrink-0">
+                <div className="flex items-center justify-between gap-2">
+                  {/* Tool Modes (Brush, Bucket, Eraser, Undo, Clear) */}
+                  <div className="flex gap-1.5 shrink-0">
                     <Button
-                      type={isErasing ? "primary" : "default"}
+                      type={toolMode === "brush" ? "primary" : "default"}
+                      size="middle"
+                      icon={<LuPencil />}
+                      onClick={() => setToolMode("brush")}
+                      className="flex items-center justify-center !px-2.5"
+                    />
+                    <Button
+                      type={toolMode === "fill" ? "primary" : "default"}
+                      size="middle"
+                      icon={<LuPaintBucket />}
+                      onClick={() => setToolMode("fill")}
+                      className="flex items-center justify-center !px-2.5"
+                    />
+                    <Button
+                      type={toolMode === "eraser" ? "primary" : "default"}
                       size="middle"
                       icon={<LuEraser />}
-                      onClick={toggleEraser}
-                      className="flex items-center justify-center"
+                      onClick={() => setToolMode("eraser")}
+                      className="flex items-center justify-center !px-2.5"
+                    />
+                    <Button
+                      type="default"
+                      size="middle"
+                      icon={<LuUndo2 />}
+                      onClick={handleUndo}
+                      className="flex items-center justify-center !px-2.5"
                     />
                     <Button
                       type="default"
@@ -881,25 +987,41 @@ const Page = () => {
                       size="middle"
                       icon={<LuTrash2 />}
                       onClick={clearCanvas}
-                      className="flex items-center justify-center"
+                      className="flex items-center justify-center !px-2.5"
                     />
+                  </div>
+
+                  {/* Brush Size - Mobile */}
+                  <div className="flex items-center gap-2 flex-1 max-w-[130px]">
+                    <Slider
+                      min={2}
+                      max={24}
+                      step={2}
+                      value={currentStroke}
+                      onChange={handleStrokeChange}
+                      className="flex-1 !my-0"
+                    />
+                    <span className="text-[11px] text-gray-500 w-6 shrink-0">
+                      {currentStroke}p
+                    </span>
                   </div>
                 </div>
 
-                {/* Brush Size - Mobile */}
-                <div className="flex items-center gap-3">
-                  <LuPencil className="text-gray-500 text-xs shrink-0" />
-                  <Slider
-                    min={2}
-                    max={20}
-                    step={2}
-                    value={currentStroke}
-                    onChange={handleStrokeChange}
-                    className="flex-1 !my-0"
-                  />
-                  <span className="text-xs text-gray-500 w-8 shrink-0">
-                    {currentStroke}px
-                  </span>
+                {/* Colors - Mobile */}
+                <div className="flex gap-2 overflow-x-auto py-1">
+                  {colors.map((color) => (
+                    <button
+                      key={color.value}
+                      onClick={() => handleColorChange(color.value)}
+                      className={`w-7 h-7 rounded-full shadow-sm border-2 shrink-0 transition-transform ${
+                        currentColor === color.value && toolMode !== "eraser"
+                          ? "border-purple-600 scale-110 ring-2 ring-purple-300"
+                          : "border-gray-200"
+                      }`}
+                      style={{ backgroundColor: color.value }}
+                      type="button"
+                    />
+                  ))}
                 </div>
               </div>
             )}

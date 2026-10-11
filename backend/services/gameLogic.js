@@ -11,6 +11,14 @@ class GameLogic {
     this.io = io;
   }
 
+  getTotalRounds(gameRoom) {
+    return gameRoom?.settings?.rounds || GAME_CONFIG.TOTAL_ROUNDS;
+  }
+
+  getTurnTime(gameRoom) {
+    return gameRoom?.settings?.drawTime || GAME_CONFIG.TURN_TIME;
+  }
+
   startGame(roomId) {
     const gameRoom = gameStateManager.getGameRoom(roomId);
     if (!gameRoom) return;
@@ -44,19 +52,21 @@ class GameLogic {
     const gameRoom = gameStateManager.getGameRoom(roomId);
     if (!gameRoom) return;
 
+    const totalRounds = this.getTotalRounds(gameRoom);
+
     // Check if current round is complete
     if (gameRoom.currentTurnInRound >= gameRoom.totalPlayers) {
       gameRoom.currentRound++;
       gameRoom.currentTurnInRound = 0;
 
-      if (gameRoom.currentRound > GAME_CONFIG.TOTAL_ROUNDS) {
+      if (gameRoom.currentRound > totalRounds) {
         this.endGame(roomId);
         return;
       }
 
       this.io.to(roomId).emit("newRoundStarted", {
         round: gameRoom.currentRound,
-        totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
+        totalRounds: totalRounds,
         message: `Round ${gameRoom.currentRound} begins!`,
       });
     }
@@ -89,8 +99,10 @@ class GameLogic {
     gameStateManager.clearDrawHistory(roomId);
     this.io.to(roomId).emit("canvasClear");
 
-    // Generate word choices
-    gameRoom.wordChoices = getRandomWords("medium", 3);
+    // Generate word choices using room difficulty & custom words
+    const difficulty = gameRoom.settings?.difficulty || "medium";
+    const customWords = gameRoom.settings?.customWords || [];
+    gameRoom.wordChoices = getRandomWords(difficulty, 3, customWords);
     gameRoom.currentWord = null;
     gameRoom.isWordSelectionPhase = true;
 
@@ -98,7 +110,7 @@ class GameLogic {
     const currentGameState = {
       state: "playing",
       round: gameRoom.currentRound,
-      totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
+      totalRounds: totalRounds,
       turnInRound: gameRoom.currentTurnInRound + 1,
       totalTurnsInRound: gameRoom.totalPlayers,
       players: gameStateManager.getAllPlayers(roomId),
@@ -112,7 +124,7 @@ class GameLogic {
     // Notify all players about the new turn
     this.io.to(roomId).emit("newTurn", {
       round: gameRoom.currentRound,
-      totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
+      totalRounds: totalRounds,
       turnInRound: gameRoom.currentTurnInRound + 1,
       totalTurnsInRound: gameRoom.totalPlayers,
       drawer: currentDrawerState.username,
@@ -231,8 +243,11 @@ class GameLogic {
 
     gameRoom.isWordSelectionPhase = false;
 
+    const turnTime = this.getTurnTime(gameRoom);
+    const totalRounds = this.getTotalRounds(gameRoom);
+
     gameRoom.roundStartTime = Date.now();
-    gameRoom.roundEndTime = Date.now() + GAME_CONFIG.TURN_TIME * 1000;
+    gameRoom.roundEndTime = Date.now() + turnTime * 1000;
 
     const initialHint = generateSimpleWordHint(gameRoom.currentWord);
     const currentDrawerState = gameStateManager.getPlayerByUserId(
@@ -248,7 +263,7 @@ class GameLogic {
     this.io.to(roomId).emit("drawingPhase", {
       word: initialHint,
       wordLength: gameRoom.currentWord.length,
-      timeLeft: GAME_CONFIG.TURN_TIME,
+      timeLeft: turnTime,
       round: gameRoom.currentRound,
       turn: gameRoom.currentTurnInRound + 1,
       drawer: currentDrawerState?.username,
@@ -269,13 +284,13 @@ class GameLogic {
     const updatedGameState = {
       state: "playing",
       round: gameRoom.currentRound,
-      totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
+      totalRounds: totalRounds,
       turnInRound: gameRoom.currentTurnInRound + 1,
       totalTurnsInRound: gameRoom.totalPlayers,
       players: gameStateManager.getAllPlayers(roomId),
       scores: Object.fromEntries(gameRoom.scores),
       currentDrawer: currentDrawerState?.username,
-      timeLeft: GAME_CONFIG.TURN_TIME * 1000,
+      timeLeft: turnTime * 1000,
     };
 
     this.io.to(roomId).emit("gameState", updatedGameState);
@@ -290,17 +305,20 @@ class GameLogic {
       clearInterval(gameRoom.turnTimer);
     }
 
+    const turnTime = this.getTurnTime(gameRoom);
+    const turnTimeMs = turnTime * 1000;
+
     gameRoom.turnTimer = setInterval(() => {
       const now = Date.now();
       const timeRemaining = Math.max(0, gameRoom.roundEndTime - now);
-      const timeElapsed = GAME_CONFIG.TURN_TIME * 1000 - timeRemaining;
+      const timeElapsed = turnTimeMs - timeRemaining;
 
       const currentRevealedPositions =
         gameStateManager.getRevealedPositions(roomId);
       const hintResult = generateWordHint(
         gameRoom.currentWord,
         timeElapsed,
-        GAME_CONFIG.TURN_TIME * 1000,
+        turnTimeMs,
         currentRevealedPositions
       );
 
@@ -385,12 +403,14 @@ class GameLogic {
       wordHint: gameRoom.currentWord,
     });
 
+    const totalRounds = this.getTotalRounds(gameRoom);
+
     // Prepare turn results with drawer penalty info
     const turnResults = {
       word: gameRoom.currentWord,
       reason,
       round: gameRoom.currentRound,
-      totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
+      totalRounds: totalRounds,
       turnInRound: gameRoom.currentTurnInRound + 1,
       totalTurnsInRound: gameRoom.totalPlayers,
       drawer: currentDrawerState?.username,
@@ -430,12 +450,12 @@ class GameLogic {
     if (gameRoom.currentTurnInRound >= gameRoom.totalPlayers) {
       this.io.to(roomId).emit("roundComplete", {
         round: gameRoom.currentRound,
-        totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
+        totalRounds: totalRounds,
         scores: Object.fromEntries(gameRoom.scores),
         word: gameRoom.currentWord,
       });
 
-      if (gameRoom.currentRound >= GAME_CONFIG.TOTAL_ROUNDS) {
+      if (gameRoom.currentRound >= totalRounds) {
         setTimeout(() => {
           this.endGame(roomId);
         }, 3000);
@@ -470,10 +490,12 @@ class GameLogic {
 
     console.log(`Game ended in room ${roomId}. Final rankings:`, rankings);
 
+    const totalRounds = this.getTotalRounds(gameRoom);
+
     this.io.to(roomId).emit("gameEnd", {
       rankings,
-      totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
-      totalTurns: gameRoom.totalPlayers * GAME_CONFIG.TOTAL_ROUNDS,
+      totalRounds: totalRounds,
+      totalTurns: gameRoom.totalPlayers * totalRounds,
       message: "Game completed! Thanks for playing!",
     });
 
@@ -535,9 +557,11 @@ class GameLogic {
       rankings
     );
 
+    const totalRounds = this.getTotalRounds(gameRoom);
+
     this.io.to(roomId).emit("gameEnd", {
       rankings,
-      totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
+      totalRounds: totalRounds,
       reason: "insufficient_players",
       message: "Game ended - not enough players remaining!",
       currentRound: gameRoom.currentRound,
