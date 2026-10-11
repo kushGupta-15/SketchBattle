@@ -6,6 +6,9 @@
   <img src="https://img.shields.io/badge/Socket.IO-010101?style=for-the-badge&logo=socket.io&logoColor=white" alt="Socket.IO" />
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <a href="https://github.com/kushGupta-15/SketchBattle/actions/workflows/ci.yml">
+    <img src="https://github.com/kushGupta-15/SketchBattle/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
+  </a>
 </div>
 
 <div align="center">
@@ -75,6 +78,41 @@
 - **node:test** for automated native unit and integration testing
 - **Sliding-window IP Rate Limiting** for brute-force and spam defense
 - **node-cron** for a self-ping keep-alive job (useful on free-tier hosts that spin down idle instances)
+
+## System Architecture
+
+```mermaid
+graph TD
+  subgraph Client ["Client Layer (React 18 + TypeScript)"]
+    UI["UI & Responsive Layout (Mobile / Desktop)"]
+    Hooks["Custom Hooks (useGameSocket, useCanvasDrawing)"]
+    Canvas["HTML5 Canvas Engine (Drawing, BFS Flood Fill, Undo Stack)"]
+    SFX["Web Audio API Synthesizer (Zero-Dependency SFX)"]
+    WebRTC["WebRTC Peer-to-Peer Video Mesh"]
+    UI --> Hooks
+    Hooks --> Canvas
+    Hooks --> SFX
+  end
+
+  subgraph Server ["Server Layer (Node.js + Express)"]
+    SocketServer["Socket.IO Engine (JWT Handshake Authentication)"]
+    GSM["GameStateManager (Turn Timers, Canvas Sync, Disconnect Recovery)"]
+    GameLogic["GameLogic (Levenshtein Near-Miss, Tiered Scoring)"]
+    REST["Express REST API (bcrypt Auth, Sliding-Window Rate Limiter)"]
+    SocketServer --> GSM
+    GSM --> GameLogic
+  end
+
+  subgraph Storage ["Database Layer (MongoDB Atlas)"]
+    DB[("Mongoose Rooms (24h Automatic TTL Cleanup)")]
+  end
+
+  Hooks <== Real-time Socket Events ==> SocketServer
+  UI <== HTTPS / REST ==> REST
+  REST --> DB
+  SocketServer --> DB
+  WebRTC <.. P2P Media Streams ..> WebRTC
+```
 
 ## Getting Started
 
