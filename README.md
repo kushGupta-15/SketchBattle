@@ -24,6 +24,55 @@
 
 ---
 
+## 📸 Visual Overview & Feature Tour
+
+Explore the core features of SketchBattle with full-viewport screenshots captured directly from the live deployment:
+
+### 1. Modern Party-Game Landing & Join System
+Seamless entry experience with automatic avatar preview badges showing personalized initials, instant room code entry, and responsive card styling.
+
+![Desktop Landing - Join Room](docs/screenshots/01-landing-join.png)
+
+---
+
+### 2. Custom Room Creation & Difficulty Tiers
+Hosts can customize game settings with granular controls: round count (2, 3, 5, 8), draw time per turn (45s, 60s, 80s, 100s), word difficulty tiers (Easy, Medium, Hard, All), optional custom word lists, and secure room passwords.
+
+![Desktop Landing - Create Room & Settings](docs/screenshots/02-landing-create.png)
+
+---
+
+### 3. Multiplayer Game Lobby & Live Audio/Video
+Players assemble in the interactive waiting room with real-time roster sync, one-click room code copying, sound toggle, WebRTC peer-to-peer video chat, and ready-status indicators.
+
+![Desktop Game Room Lobby](docs/screenshots/03-game-lobby.png)
+
+---
+
+### 4. Interactive Drawing Canvas & Studio
+The drawing arena features an HTML5 canvas board with 12 preset colors, adjustable stroke width (2-24px), high-speed 4-way BFS flood fill paint bucket, eraser, stroke undo (`Ctrl+Z`), turn countdown timer, and live guessing chat with spoiler isolation.
+
+![Interactive Drawing Canvas & Studio](docs/screenshots/04-game-canvas-tools.png)
+
+---
+
+### 5. Mobile-First Responsive Design & On-Screen Guess Bar
+Full mobile optimization designed for touchscreens: the live chat feed and answer input bar are positioned directly on the main screen below the canvas for fast, frustration-free guessing without having to open hidden sidebars or drawers.
+
+<div align="center">
+  <img src="docs/screenshots/05-mobile-landing.png" width="31%" alt="Mobile Landing View" />
+  &nbsp;
+  <img src="docs/screenshots/06-mobile-gameplay.png" width="31%" alt="Mobile Gameplay & On-Screen Guessing" />
+  &nbsp;
+  <img src="docs/screenshots/07-mobile-drawer.png" width="31%" alt="Mobile Player & Video Drawer" />
+</div>
+
+- **Mobile Landing**: Clean responsive party card with dynamic avatar badge and quick join/create tabs.
+- **On-Screen Guessing**: Guess bar placed directly beneath the canvas for effortless mobile play without modal occlusion.
+- **Sliding Roster Drawer**: Tactile bottom sheet drawer housing player list, scores, and WebRTC video call.
+
+---
+
 ## Features
 
 - **Interactive Drawing Canvas** - Smooth drawing with brush, eraser, high-speed 4-way BFS flood fill paint bucket, and stroke undo stack (`Ctrl+Z`)
